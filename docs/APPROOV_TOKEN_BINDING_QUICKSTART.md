@@ -194,14 +194,10 @@ class Approov
      * @return bool
      */
     private function verifyApproovTokenBinding(HeaderBag $headers, \stdClass $approov_token_claims): bool {
-        // Note that the `pay` claim will, under normal circumstances, be present,
-        // but if the Approov failover system is enabled, then no claim will be
-        // present, and in this case you want to return true, otherwise you will not
-        // be able to benefit from the redundancy afforded by the failover system.
         if (empty($approov_token_claims->pay)) {
             // You may want to add some logging here
             // \Log::debug("MISSIG APPROOV TOKEN BINDING CLAIM");
-            return true;
+            return false;
         }
 
         // We use the Authorization token, but feel free to use another header in
