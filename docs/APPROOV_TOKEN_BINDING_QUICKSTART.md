@@ -61,13 +61,20 @@ Adding the API domain also configures the [dynamic certificate pinning](https://
 
 Approov tokens are signed with a symmetric secret. To verify tokens, we need to grab the secret using the [Approov secret command](https://approov.io/docs/latest/approov-cli-tool-reference/#secret-command) and plug it into the PHP Laravel API server environment to check the signatures of the [Approov Tokens](https://www.approov.io/docs/latest/approov-usage-documentation/#approov-tokens) that it processes.
 
-Retrieve the Approov secret with:
+First, enable your Approov `admin` role with:
+
+```bash
+eval `approov role admin`
+```
+
+Next, retrieve the Approov secret with:
 
 ```text
 approov secret -get base64
 ```
 
-> **NOTE:** The `approov secret` command requires an [administration role](https://approov.io/docs/latest/approov-usage-documentation/#account-access-roles) to execute successfully.
+> **@IMPORTANT:**
+> Don't set an Approov key id for the secret, because the JWT library doesn't support to pass the symmetric key for the Approov secret in a JWKs.
 
 #### Set the Approov Secret
 
@@ -161,6 +168,14 @@ class Approov
                 return null;
             }
 
+            // The Approov secret cannot be given as part of a JWKS key set,
+            // therefore you cannot use the Approov CLI to set a key id for it.
+            //
+            // If you set the key id then the token check will fail due to the
+            // presence of a `kid` key in the header of the Approov token, that
+            // will not be found in the `$approov_secret` variable, because this
+            // variable contains the secret as a binary string, not as a JWKs
+            // key set.
             $approov_token_claims = JWT::decode($approov_token, $approov_secret, ['HS256']);
             return $approov_token_claims;
 
@@ -341,3 +356,28 @@ HTTP/1.1 401
 
 {}
 ```
+
+## Issues
+
+If you find any issue while following our instructions then just report it [here](https://github.com/approov/quickstart-php-laravel-token-check/issues), with the steps to reproduce it, and we will sort it out and/or guide you to the correct path.
+
+[TOC](#toc---table-of-contents)
+
+
+## Useful Links
+
+If you wish to explore the Approov solution in more depth, then why not try one of the following links as a jumping off point:
+
+* [Approov Free Trial](https://approov.io/signup)(no credit card needed)
+* [Approov Get Started](https://approov.io/product/demo)
+* [Approov QuickStarts](https://approov.io/docs/latest/approov-integration-examples/)
+* [Approov Docs](https://approov.io/docs)
+* [Approov Blog](https://approov.io/blog/)
+* [Approov Resources](https://approov.io/resource/)
+* [Approov Customer Stories](https://approov.io/customer)
+* [Approov Support](https://approov.zendesk.com/hc/en-gb/requests/new)
+* [About Us](https://approov.io/company)
+* [Contact Us](https://approov.io/contact)
+
+
+[TOC](#toc---table-of-contents)
