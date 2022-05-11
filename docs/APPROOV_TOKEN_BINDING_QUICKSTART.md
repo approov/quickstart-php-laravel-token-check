@@ -69,7 +69,7 @@ eval `approov role admin`
 
 Next, retrieve the Approov secret with:
 
-```text
+```bash
 approov secret -get base64
 ```
 
