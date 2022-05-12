@@ -12,7 +12,7 @@ This Approov integration example is from where the code example for the [Approov
 
 ## Why?
 
-To lock down your API server to your mobile app. Please read the brief summary in the [README](/README.md#why) at the root of this repo or visit our [website](https://approov.io/product.html) for more details.
+To lock down your API server to your mobile app. Please read the brief summary in the [Approov Overview](/OVERVIEW.md#why) at the root of this repo or visit our [website](https://approov.io/product) for more details.
 
 [TOC](#toc---table-of-contents)
 
@@ -21,7 +21,7 @@ To lock down your API server to your mobile app. Please read the brief summary i
 
 The PHP Laravel API server is very simple and is defined in the project [src/approov-protected-server/token-check/hello](/src/approov-protected-server/token-check/hello). Take a look at the [Approov Middleware](/src/approov-protected-server/token-check/hello/app/Http/Middleware/Approov.php) class, and search for the `verifyApproovToken()` function to see the simple code for the check.
 
-For more background on Approov, see the overview in the [README](/README.md#how-it-works) at the root of this repo.
+For more background on Approov, see the [Approov Overview](/OVERVIEW.md#how-it-works) at the root of this repo.
 
 [TOC](#toc---table-of-contents)
 
@@ -41,7 +41,7 @@ First, you need to create the `.env` file. From the `src/approov-protected-serve
 cp .env.example .env
 ```
 
-Second, you need to set the dummy secret in the `src/approov-protected-server/token-check/hello/.env` file as explained [here](/README.md#the-dummy-secret).
+Second, you need to set the dummy secret in the `src/approov-protected-server/token-check/hello/.env` file as explained [here](/TESTING.md#the-dummy-secret).
 
 Next, you need to install the dependencies. From the `src/approov-protected-server/token-check/hello` folder execute:
 
@@ -80,7 +80,7 @@ Content-Type: application/json
 
 The reason you got a `401` is because no Approoov token isn't provided in the headers of the request.
 
-Finally, you can test that the Approov integration example works as expected with this [Postman collection](/README.md#testing-with-postman) or with some cURL requests [examples](/README.md#testing-with-curl).
+Finally, you can test that the Approov integration example works as expected with this [Postman collection](/TESTING.md#testing-with-postman) or with some cURL requests [examples](/TESTING.md#testing-with-curl).
 
 [TOC](#toc---table-of-contents)
 

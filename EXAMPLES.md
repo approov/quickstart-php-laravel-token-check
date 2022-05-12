@@ -2,7 +2,7 @@
 
 [Approov](https://approov.io) is an API security solution used to verify that requests received by your backend services originate from trusted versions of your mobile apps, and here you can find the Hello servers examples that are the base for the Approov [quickstarts](/docs) for the Laravel PHP Framework.
 
-For more information about how Approov works and why you should use it you can read the [README](/README.md) at the root of this repo.
+For more information about how Approov works and why you should use it you can read the [Approov Overview](/OVERVIEW.md) at the root of this repo.
 
 If you are looking for the Approov quickstarts to integrate Approov in your Laravel API server then you can find them [here](/docs).
 
@@ -32,7 +32,7 @@ cp src/approov-protected-server/token-check/hello/.env.example src/approov-prote
 cp src/approov-protected-server/token-binding-check/hello/.env.example src/approov-protected-server/token-binding-check/hello/.env
 ```
 
-Edit each file and add the [dummy secret](/README.md#the-dummy-secret) to it in order to be able to test the Approov integration with the provided [Postman collection](https://github.com/approov/postman-collections/blob/master/quickstarts/hello-world/hello-world.postman_curl_requests_examples.md).
+Edit each file and add the [dummy secret](/TESTING.md#the-dummy-secret) to it in order to be able to test the Approov integration with the provided [Postman collection](https://github.com/approov/postman-collections/blob/master/quickstarts/hello-world/hello-world.postman_curl_requests_examples.md).
 
 
 ### Build the Docker Stack
