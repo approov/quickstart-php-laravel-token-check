@@ -164,7 +164,7 @@ class Approov
 
             if (empty($approov_secret)) {
                 // You may want to add some logging here
-                // \Log::debug("MISSIG APPROOV SECRET");
+                // \Log::debug("MISSING APPROOV SECRET");
                 return null;
             }
 
@@ -211,7 +211,7 @@ class Approov
     private function verifyApproovTokenBinding(HeaderBag $headers, \stdClass $approov_token_claims): bool {
         if (empty($approov_token_claims->pay)) {
             // You may want to add some logging here
-            // \Log::debug("MISSIG APPROOV TOKEN BINDING CLAIM");
+            // \Log::debug("MISSING APPROOV TOKEN BINDING CLAIM");
             return false;
         }
 
@@ -222,7 +222,7 @@ class Approov
 
         if (empty($token_binding_header)) {
             // You may want to add some logging here
-            // \Log::debug("MISSIG APPROOV TOKEN BINDING HEADER");
+            // \Log::debug("MISSING APPROOV TOKEN BINDING HEADER");
             return false;
         }
 

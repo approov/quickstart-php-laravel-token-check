@@ -159,7 +159,7 @@ class Approov
 
             if (empty($approov_secret)) {
                 // You may want to add some logging here
-                //\Log::debug("MISSIG APPROOV SECRET");
+                //\Log::debug("MISSING APPROOV SECRET");
                 return null;
             }
 
