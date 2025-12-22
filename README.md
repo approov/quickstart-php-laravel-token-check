@@ -1,234 +1,252 @@
-# Approov QuickStart - PHP Laravel Token Check
+# Approov Backend Quickstart - {{LANGUAGE}} {{FRAMEWORK}}
 
-[Approov](https://approov.io) is an API security solution used to verify that requests received by your backend services originate from trusted versions of your mobile apps.
+This project provides a server-side example of Approov token verification for a protected backend API. It exposes a simple API that verifies Approov tokens before granting access to protected endpoints and demonstrates how the endpoints behave under the current Approov configuration:
 
-This repo implements the Approov server-side request verification code in PHP, which performs the verification check before allowing valid traffic to be processed by the API endpoint.
+ - `/unprotected` - no Approov token required.
+ - `/token-check` - requires a valid Approov token.
+ - `/token-binding` - requires a valid Approov token which is bound to a header value.
+ - `/token-double-binding` - requires a valid Approov token which is bound to two header values.
 
-This is an Approov integration quickstart example for the PHP Laravel framework. If you are looking for another PHP integration you can check our list of [quickstarts](https://approov.io/docs/latest/approov-integration-examples/backend-api/), and if you don't find what you are looking for, then please let us know [here](https://approov.io/contact). Meanwhile, you can always use the framework agnostic [quickstart example](https://github.com/approov/quickstart-php-token-check) for PHP, and you may find that's easily adaptable to your framework of choice.
+<!-- Generic version:   -->
+In this example, Approov protection is provided by [`{{DECORATOR_FUNCTION_NAME}}`]({{DECORATOR_LINK}}). The level of protection is configured per endpoint via the decorator parameters, as shown in [`{{ENDPOINT_CONFIG_NAME}}`]({{ENDPOINT_EXAMPLE_LINK}}).
 
+<!-- Language specific version:  
+In this example, Approov protection is provided by [ApproovAuthenticationProvider.java](https://github.com/KMilej/quickstart-java-spring-token-check/blob/c26a41a262c5db6e57f0eeec83b6db699b70bfc4/src/main/java/com/criticalblue/approov/jwt/authentication/ApproovAuthenticationProvider.java#L15-L43). This is chained into Spring's HttpSecurity web builder in [WebSecurityConfig.java](https://github.com/KMilej/quickstart-java-spring-token-check/blob/c26a41a262c5db6e57f0eeec83b6db699b70bfc4/src/main/java/com/criticalblue/approov/jwt/WebSecurityConfig.java#L47-L82). -->
 
-## Approov Integration Quickstart
+## Approov Token Verification Flow
 
-The quickstart was tested with the following Operating Systems:
+1. **Token Request:**  
+   The Approov SDK inside the mobile app securely communicates with the Approov Cloud Service to obtain a short-lived [Approov Token](https://ext.approov.io/docs/latest/approov-usage-documentation/#approov-tokens) (a signed JWT).  
+   Additionally, you can use the CLI [token commands](https://ext.approov.io/docs/latest/approov-cli-tool-reference/#token-commands) to validate tokens, generate new ones, and set the data hash.
 
-* Ubuntu 20.04
-* MacOS Big Sur
-* Windows 10 WSL2 - Ubuntu 20.04
+2. **Token Attachment:**  
+   The app attaches this token to every API request using the `Approov-Token` HTTP header.
 
-First, setup the [Approov CLI](https://approov.io/docs/latest/approov-installation/index.html#initializing-the-approov-cli).
+3. **Server Validation:**  
+   The [server verifies](https://ext.approov.io/docs/latest/approov-usage-documentation/#approov-architecture) the token using the shared Approov secret, checking its:
+    - Signature authenticity
+    - Expiration (`exp` claim)
+    - Other claims if configured
 
-Now, register the API domain for which Approov will issues tokens:
+4. **Token Binding (Optional):**  
+   [Token binding](https://ext.approov.io/docs/latest/approov-usage-documentation/#token-binding) is configured by the app via the Approov SDK, which hashes a chosen binding value (for example the `Authorization` header) and embeds it into the Approov token.  
+   The protected API then computes the same hash from the incoming request and verifies that it matches the `pay` claim, preventing token reuse or replay attacks. For local testing, you can also generate example tokens with a binding using the Approov CLI.
+
+5. **Request Decision:**   
+      If all checks pass → the request is trusted and processed `200 OK`.   
+      If validation fails → the server responds with `401 Unauthorized`.
+
+## Requirements:
+
+1. ***Approov account*** - If you're new, sign up for an [Approov trial account](https://approov.io/signup).
+2. ***Approov CLI initialized*** - Follow the [installation guide](https://ext.approov.io/docs/latest/approov-installation/#initializing-the-approov-cli) and confirm `approov whoami` works.
+3. ***Install curl*** - Ensure the `curl` CLI is available.
+4. ***Create .env file*** - copy `.env.example` so there is a place to store the secret key.
+    ```bash
+    cp .env.example .env
+    ```
+
+5. ***Configure secret*** - fetch the secret and add it to `.env` (`APPROOV_BASE64_SECRET`):
+   ```bash
+   approov secret -get base64
+   ```
+
+6. ***Register API domain*** - point Approov at your backend API (default example.com):
+   ```bash
+   approov api -add example.com
+   ```
+
+7. ***Install Docker and Docker Compose*** - follow the official guide: [Docker docs](https://docs.docker.com/get-started/get-docker/)
+
+## Try it yourself using Docker
+
+*If you have all requirements, you can run*
 
 ```bash
-approov api -add api.example.com
+bash run-server.sh
 ```
 
-> **NOTE:** By default a symmetric key (HS256) is used to sign the Approov token on a valid attestation of the mobile app for each API domain it's added with the Approov CLI, so that all APIs will share the same secret and the backend needs to take care to keep this secret secure.
->
-> A more secure alternative is to use asymmetric keys (RS256 or others) that allows for a different keyset to be used on each API domain and for the Approov token to be verified with a public key that can only verify, but not sign, Approov tokens.
->
-> To implement the asymmetric key you need to change from using the symmetric HS256 algorithm to an asymmetric algorithm, for example RS256, that requires you to first [add a new key](https://approov.io/docs/latest/approov-usage-documentation/#adding-a-new-key), and then specify it when [adding each API domain](https://approov.io/docs/latest/approov-usage-documentation/#keyset-key-api-addition). Please visit [Managing Key Sets](https://approov.io/docs/latest/approov-usage-documentation/#managing-key-sets) on the Approov documentation for more details.
+This script:
+- Builds and starts containers – runs `docker compose -f compose.yaml up -d --build app` to build the image and launch the application in the background.
+- Runs test.sh – which executes all endpoint tests 
+  - `/unprotected` - no security headers required.
+  - `/token-check` - requires the `Approov-Token` header.
+  - `/token-binding` - requires `Approov-Token` and `Authorization` headers.
+  - `/token-double-binding` - requires `Approov-Token`, `Authorization`, and `Content-Digest` headers.
+- Displays results and stops containers when finished.
 
-Next, enable your Approov `admin` role with:
+### Automated and Manual Testing
+
+*When the server is running, validate the endpoints via the automated bash script or by running the manual checks below*
 
 ```bash
-eval `approov role admin`
-````
+bash test.sh
+```
 
-For the Windows powershell:
+This script:
+- Verifies that the `approov` and `curl` commands are installed.
+- Checks Approov status by calling `/approov-state` (enabled vs disabled).
+- Runs endpoint tests against `/unprotected` (no token), `/token-check` (valid/invalid Approov tokens), `/token-binding` (token bound to `Authorization`), and `/token-double-binding` (token bound to `Authorization` + `Content-Digest`).
+- Logs full request/response details to `.config/logs/<timestamp>.log`.
+
+#### *1. Unprotected Endpoint (No Approov)*
+
+- The client sends a normal HTTPS request.
+- The server **does not verify** any Approov token or extra authentication header.
+- This means **any client** (even tampered or unauthorized) can call the API if they know the URL.
+
+*The following example shows how the API responds when no Approov protection is applied.*
 
 ```bash
-set APPROOV_ROLE=admin:___YOUR_APPROOV_ACCOUNT_NAME_HERE___
+curl -iX GET http://localhost:8080/unprotected
 ```
 
-Now, get your Approov Secret with the [Approov CLI](https://approov.io/docs/latest/approov-installation/index.html#initializing-the-approov-cli):
+The response will be `200 OK` for this request:
+```text
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-cache
+```
+
+#### *2. Approov Token Check*
+
+- The client includes an `Approov-Token` (a short-lived JWT) in each API request header.
+- The server verifies this token using the **Approov secret key** that is securely configured on the backend and checks:
+    -  Token verification - confirms the token is signed by the Approov secret.
+    -  Expiration (`exp` claim) - ensures the token is still valid.
+- If the token is valid → request is trusted.
+- If invalid → server returns `401 Unauthorized`.
+- **Purpose**: Protect API endpoints so that only authentic, unmodified Approov-integrated apps can access them.
+
+***The following example shows how the API responds when an Approov token is required.***
+
+*Generate a valid Approov token:*
 
 ```bash
-approov secret -get base64
+approov token -genExample example.com
 ```
 
-> **@IMPORTANT:**
-> Don't set an Approov key id for the secret, because the JWT library doesn't support to pass the symmetric key for the Approov secret in a JWKs.
+*Use the generated token in the `Approov-Token` header and `/token-check` endpoint.*
 
-Next, add the [Approov secret](https://approov.io/docs/latest/approov-usage-documentation/#account-secret-key-export) to your project `.env` file:
-
-```env
-APPROOV_BASE64_SECRET=approov_base64_secret_here
+```bash
+curl -iX GET http://localhost:8080/token-check \
+     -H "Approov-Token: valid_approov_token_here"
 ```
 
-Now, let your Laravel app load it into the config, by creating a configuration file for Approov at `config/approov.php`:
-
-```php
-<?php
-
-return [
-    'secret' => base64_decode(env('APPROOV_BASE64_SECRET'), true),
-];
-```
-
-Next, add to your project the [firebase/php-jwt](https://github.com/firebase/php-jwt) package to check the JWT token:
+The response will be `200 OK` for this request:
 
 ```text
-composer require firebase/php-jwt
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-cache
 ```
 
-Now, add the [Approov Middleware](/src/approov-protected-server/token-check/hello/app/Http/Middleware/Approov.php) class to your project at `app/Http/Middleware/Approov.php`:
+*If you use an invalid or missing token, the server will respond with `401 Unauthorized`.*
 
-```php
-<?php declare(strict_types=1);
+#### *3. Approov Token Binding Check*
 
-namespace App\Http\Middleware;
+- The client sends two headers on authenticated API calls:
+    - `Approov-Token`
+    - `Authorization` – your auth token value (e.g., `ExampleAuthToken==`)
+- The server verifies the token and ensures that the bound value matches what the app used.
+- Prevents token replay - the Approov token cannot be reused or stolen for another session.
+- **Use case:** stronger protection for authenticated API calls tied to a specific user or device.
 
-use Closure;
-use Firebase\JWT\JWT;
-use Symfony\Component\HttpFoundation\HeaderBag;
+***The following example shows how the API responds when an Approov token with binding is required.***
 
-class Approov
-{
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure  $next
-     * @return mixed
-     */
-    public function handle($request, Closure $next)
-    {
-        $approov_token_claims = $this->verifyApproovToken($request->headers);
+*Generate a valid Approov token bound to the `Authorization` header:*
 
-        if (!$approov_token_claims) {
-            return response()->json(new \stdClass(), 401);
-        }
-
-        return $next($request);
-    }
-
-    /**
-     * Verifies the Approov token in the incoming request.
-     *
-     * Returns the Approov token claims on success or null on failure.
-     *
-     * @param  Symfony\Component\HttpFoundation\HeaderBag  $headers
-     * @return ?\stdClass
-     */
-    private function verifyApproovToken(HeaderBag $headers): ?\stdClass {
-        try {
-            $approov_token = $headers->get('Approov-Token');
-
-            if (empty($approov_token)) {
-                // You may want to add some logging here
-                // \Log::debug("MISSING APPROOV TOKEN");
-                return null;
-            }
-
-            $approov_secret = config('approov.secret');
-
-            if (empty($approov_secret)) {
-                // You may want to add some logging here
-                //\Log::debug("MISSING APPROOV SECRET");
-                return null;
-            }
-
-            // The Approov secret cannot be given as part of a JWKS key set,
-            // therefore you cannot use the Approov CLI to set a key id for it.
-            //
-            // If you set the key id then the token check will fail due to the
-            // presence of a `kid` key in the header of the Approov token, that
-            // will not be found in the `$approov_secret` variable, because this
-            // variable contains the secret as a binary string, not as a JWKs
-            // key set.
-            $approov_token_claims = JWT::decode($approov_token, $approov_secret, ['HS256']);
-            return $approov_token_claims;
-
-        } catch(\UnexpectedValueException $exception) {
-            // You may want to add some logging here
-            // \Log::debug($exception->getMessage());
-            return null;
-        } catch(\InvalidArgumentException $exception) {
-            // You may want to add some logging here
-            // \Log::debug($exception->getMessage());
-            return null;
-        } catch(\DomainException $exception) {
-            // You may want to add some logging here
-            // \Log::debug($exception->getMessage());
-            return null;
-        }
-
-        // You may want to add some logging here
-        return null;
-    }
-}
+```bash
+approov token -setDataHashInToken ExampleAuthToken== -genExample example.com
 ```
 
-Next, add the [Approov Middleware](/src/approov-protected-server/token-check/hello/app/Http/Middleware/Approov.php) to your Laravel application route middleware array at [app/Http/Kernel.php](/src/approov-protected-server/token-check/hello/app/Http/Kernel.php):
+*Use the generated token with binding in the Approov-Token and Authorization headers when calling the /token-binding endpoint.*
 
-```php
-protected $routeMiddleware = [
-    'approov' => \App\Http\Middleware\Approov::class,
-    'auth' => \App\Http\Middleware\Authenticate::class,
-    // omitted lines for brevity
-];
+```bash
+curl -iX GET http://localhost:8080/token-binding \
+     -H "Approov-Token: valid_approov_token_here" \
+     -H "Authorization: ExampleAuthToken=="
 ```
 
-In the same file, you need to activate the Approov Middleware by including it as the first one in the array for the `api` route middleware group:
+The response will be `200 OK` for this request:
 
-```php
-protected $middlewareGroups = [
-    'web' => [
-        // omitted lines for brevity
-    ],
-
-    'api' => [
-        'approov',
-        'throttle:60,1',
-        \Illuminate\Routing\Middleware\SubstituteBindings::class,
-    ],
-];
+```text
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-cache
 ```
 
-> **NOTE:** The Approov middleware is included as the first one in the array because you don't want to waste your server resources in processing requests that don't have a valid Approov token. This approach will help your server to handle more load under a Denial of Service(DoS) attack.
+*If you use an invalid or missing header or token, the server will respond with `401 Unauthorized`.*
 
-Adding the Approov Middleware class to the `api` middleware group means that any incoming request to an API route needs to have a valid Approov token to be further processed. So, no need to explicitly add Approov as a middleware into any route in the file `routes/api.php`.
+#### Approov Token Binding Check with Two Different Bound Values
 
-You can skip the Approov Middleware execution for any given route by using:
+- The client sends three headers on authenticated API calls:
+    - `Approov-Token`
+    - `Authorization`
+    - `Content-Digest` It is combined with the `Authorization` header to create a stronger binding.
+- Both are included in the hash inside the Approov token. This means the server verifies a single hash that covers both authentication credentials.
+- **Use case:** This configuration provides the highest level of protection for authenticated API requests:
 
-```php
-Route::get('/some-route', function () {
-    // your code here
-})->withoutMiddleware(['approov']);
+***The following example shows how the API responds when an Approov token with two bindings is required.***
+
+*Generate a valid Approov token bound to the `Authorization` and `Content-Digest` headers:*
+
+```bash
+approov token -setDataHashInToken ExampleAuthToken==ContentDigest== -genExample example.com
 ```
 
-Not enough details in the bare bones quickstart? No worries, check the [detailed quickstarts](QUICKSTARTS.md) that contain a more comprehensive set of instructions, including how to test the Approov integration.
+*Use the generated token with two bindings in the Approov-Token and Authorization headers when calling the `/token-double-binding` endpoint.*
 
+```bash
+curl -iX GET http://localhost:8080/token-double-binding \
+     -H "Approov-Token: valid_approov_token_here" \
+     -H "Authorization: ExampleAuthToken==" \
+     -H "Content-Digest: ContentDigest=="
+```
 
-## More Information
+The response will be `200 OK` for this request.
 
-* [Approov Overview](OVERVIEW.md)
-* [Detailed Quickstarts](QUICKSTARTS.md)
-* [Examples](EXAMPLES.md)
-* [Testing](TESTING.md)
+```text
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-cache
+```
 
-### System Clock
+*If you use an invalid or missing header or token, the server will respond with `401 Unauthorized`.*
 
-In order to correctly check for the expiration times of the Approov tokens is very important that the backend server is synchronizing automatically the system clock over the network with an authoritative time source. In Linux this is usually done with a NTP server.
+## Enable or Disable Approov Protection      
 
+When the example server is running on `localhost:8080`, you can toggle Approov protection with these commands:
 
-## Issues
+```bash
+curl -X POST http://localhost:8080/approov/disable    # disable the Approov service
 
-If you find any issue while following our instructions then just report it [here](https://github.com/approov/quickstart-php-laravel-token-check/issues), with the steps to reproduce it, and we will sort it out and/or guide you to the correct path.
+curl -X POST http://localhost:8080/approov/enable     # enable the Approov service
 
+curl -X GET http://localhost:8080/approov-state       # check current state
+```
+
+*You can rerun the tests with Approov disabled to observe how the application behaves when the Approov protection is ***no longer active***.*
+
+## Reporting Issues
+
+**Environments where the quickstart was tested:**
+```text
+* Runtime: {{RUNTIME_VERSION}}
+* Framework: {{LANGUAGE}} {{FRAMEWORK}}
+* Build Tool: {{BUILD_TOOL}} {{BUILD_TOOL_VERSION}}
+```
+
+If you encounter any problems while following this guide, or have any other concerns, please let us know by opening an issue [here](https://github.com/approov/quickstart-java-spring-token-check/issues) and we will be happy to assist you.
 
 ## Useful Links
 
-If you wish to explore the Approov solution in more depth, then why not try one of the following links as a jumping off point:
-
-* [Approov Free Trial](https://approov.io/signup)(no credit card needed)
-* [Approov Get Started](https://approov.io/product/demo)
-* [Approov QuickStarts](https://approov.io/docs/latest/approov-integration-examples/)
-* [Approov Docs](https://approov.io/docs)
-* [Approov Blog](https://approov.io/blog/)
+* [Approov QuickStarts](https://approov.io/resource/quickstarts/)
+* [Approov Docs](https://ext.approov.io/docs)
+* [Approov Blog](https://approov.io/blog)
 * [Approov Resources](https://approov.io/resource/)
 * [Approov Customer Stories](https://approov.io/customer)
-* [Approov Support](https://approov.io/contact)
+* [Approov Support](https://approov.io/info/technical-support)
 * [About Us](https://approov.io/company)
-* [Contact Us](https://approov.io/contact)
+* [Contact Us](https://approov.io/info/contact)
+
