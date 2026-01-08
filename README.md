@@ -46,9 +46,9 @@ In this example, Approov protection is provided by [ApproovAuthenticationProvide
     cp .env.example .env
     ```
 
-5. ***Configure secret*** - fetch the secret and add it to `.env` (`APPROOV_BASE64_SECRET`):
+5. ***Configure secret*** - fetch the secret and add it to `.env` (`APPROOV_BASE64URL_SECRET`):
    ```bash
-   approov secret -get base64
+   approov secret -get base64url
    ```
 
 6. ***Register API domain*** - point Approov at your backend API (default example.com):
@@ -91,7 +91,7 @@ This script:
 
 #### *1. Unprotected Endpoint (No Approov)*
 
-- The client sends a normal HTTPS request.
+- The client sends a normal HTTP request.
 - The server **does not verify** any Approov token or extra authentication header.
 - This means **any client** (even tampered or unauthorized) can call the API if they know the URL.
 
@@ -150,7 +150,7 @@ Cache-Control: no-cache
     - `Authorization` – your auth token value (e.g., `ExampleAuthToken==`)
 - The server verifies the token and ensures that the bound value matches what the app used.
 - Prevents token replay - the Approov token cannot be reused or stolen for another session.
-- **Use case:** stronger protection for authenticated API calls tied to a specific user or device.
+- **Use case:** Stronger protection for authenticated API calls tied to a specific user or device.
 
 ***The following example shows how the API responds when an Approov token with binding is required.***
 
@@ -185,7 +185,7 @@ Cache-Control: no-cache
     - `Authorization`
     - `Content-Digest` It is combined with the `Authorization` header to create a stronger binding.
 - Both are included in the hash inside the Approov token. This means the server verifies a single hash that covers both authentication credentials.
-- **Use case:** This configuration provides the highest level of protection for authenticated API requests:
+- **Use case:** Stronger protection then single binding by tying both headers together.
 
 ***The following example shows how the API responds when an Approov token with two bindings is required.***
 
@@ -249,4 +249,3 @@ If you encounter any problems while following this guide, or have any other conc
 * [Approov Support](https://approov.io/info/technical-support)
 * [About Us](https://approov.io/company)
 * [Contact Us](https://approov.io/info/contact)
-
