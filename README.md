@@ -7,7 +7,7 @@ This project provides a server-side example of Approov token verification for a 
  - `/token-binding` - requires a valid Approov token which is bound to a header value.
  - `/token-double-binding` - requires a valid Approov token which is bound to two header values.
 
-In this example, Approov protection is implemented by the security gate [ApproovTokenVerifier](https://github.com/KMilej/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L11-L188), which validates the Approov token (signature + expiry) and enforces token binding where required. Protected routes are grouped under the ApproovTokenVerifier route middleware in [api.php](https://github.com/KMilej/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/routes/api.php#L36-L55).
+In this example, Approov protection is implemented by the [ApproovTokenVerifier](https://github.com/KMilej/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L11-L188), which validates the Approov token (signature + expiry) and enforces token binding where required. Protected routes are grouped under the ApproovTokenVerifier route middleware in [api.php](https://github.com/KMilej/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/routes/api.php#L36-L55).
 
 ## Approov Token Verification Flow
 
@@ -63,17 +63,13 @@ bash run-server.sh
 ```
 
 This script:
-- Builds and starts containers – runs `docker compose -f compose.yaml up -d --build app` to build the image and launch the application in the background.
-- Runs test.sh – which executes all endpoint tests 
-  - `/unprotected` - no security headers required.
-  - `/token-check` - requires the `Approov-Token` header.
-  - `/token-binding` - requires `Approov-Token` and `Authorization` headers.
-  - `/token-double-binding` - requires `Approov-Token`, `Authorization`, and `Content-Digest` headers.
-- Displays results and stops containers when finished.
+- Builds and starts the container via `scripts/build.sh` (`docker build` + `docker run`) and waits for `/approov-state` to be ready.
+
+*Once finished, press `Ctrl+C` to stop log tailing; the container keeps running unless you stop it. Use `docker ps` to find the container name and `docker stop <container_name>` to stop it.*
 
 ### Automated and Manual Testing
 
-*When the server is running, validate the endpoints via the automated bash script or by running the manual checks below*
+*When the server is running (in a different terminal), validate the endpoints via the automated bash script or by running the manual checks below*
 
 ```bash
 bash test.sh
