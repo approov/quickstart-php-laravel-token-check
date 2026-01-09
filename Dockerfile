@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Builds the quickstart backend container image and configures scripts/install-prerequisites.sh and scripts/build.sh
 # as the entrypoint used both locally and when deployed via Docker.
-FROM {{BASE_IMAGE}}
+FROM php:8.2-cli
 
 ENV APP_HOME=/workspace \
     RUN_MODE=container
