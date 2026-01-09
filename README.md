@@ -1,4 +1,4 @@
-# Approov Backend Quickstart - {{LANGUAGE}} {{FRAMEWORK}}
+# Approov Backend Quickstart - PHP Laravel
 
 This project provides a server-side example of Approov token verification for a protected backend API. It exposes a simple API that verifies Approov tokens before granting access to protected endpoints and demonstrates how the endpoints behave under the current Approov configuration:
 
@@ -7,11 +7,7 @@ This project provides a server-side example of Approov token verification for a 
  - `/token-binding` - requires a valid Approov token which is bound to a header value.
  - `/token-double-binding` - requires a valid Approov token which is bound to two header values.
 
-<!-- Generic version:   -->
-In this example, Approov protection is provided by [`{{DECORATOR_FUNCTION_NAME}}`]({{DECORATOR_LINK}}). The level of protection is configured per endpoint via the decorator parameters, as shown in [`{{ENDPOINT_CONFIG_NAME}}`]({{ENDPOINT_EXAMPLE_LINK}}).
-
-<!-- Language specific version:  
-In this example, Approov protection is provided by [ApproovAuthenticationProvider.java](https://github.com/KMilej/quickstart-java-spring-token-check/blob/c26a41a262c5db6e57f0eeec83b6db699b70bfc4/src/main/java/com/criticalblue/approov/jwt/authentication/ApproovAuthenticationProvider.java#L15-L43). This is chained into Spring's HttpSecurity web builder in [WebSecurityConfig.java](https://github.com/KMilej/quickstart-java-spring-token-check/blob/c26a41a262c5db6e57f0eeec83b6db699b70bfc4/src/main/java/com/criticalblue/approov/jwt/WebSecurityConfig.java#L47-L82). -->
+In this example, Approov protection is implemented by the [ApproovTokenVerifier](), which validates the Approov token (signature + expiry) and enforces token binding where required. The middleware is applied to protected routes in api.php via [Route::middleware(...)->group(...).]().
 
 ## Approov Token Verification Flow
 
@@ -232,9 +228,9 @@ curl -X GET http://localhost:8080/approov-state       # check current state
 
 **Environments where the quickstart was tested:**
 ```text
-* Runtime: {{RUNTIME_VERSION}}
-* Framework: {{LANGUAGE}} {{FRAMEWORK}}
-* Build Tool: {{BUILD_TOOL}} {{BUILD_TOOL_VERSION}}
+* Runtime: PHP 8.1.33
+* Framework: Laravel 10.50.0
+* Build Tool: Composer 2.8.11
 ```
 
 If you encounter any problems while following this guide, or have any other concerns, please let us know by opening an issue [here](https://github.com/approov/quickstart-java-spring-token-check/issues) and we will be happy to assist you.
