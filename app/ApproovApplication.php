@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ApproovApplication
@@ -10,8 +11,9 @@ class ApproovApplication
     public const AUTH_HEADER = 'Authorization';
     public const DIGEST_HEADER = 'Content-Digest';
 
-    private static bool $APPROOV_ENABLED = true;
-    private static bool $TOKEN_BINDING_ENABLED = true;
+    private const APPROOV_ENABLED_KEY = 'approov_enabled';
+    private const TOKEN_BINDING_ENABLED_KEY = 'approov_token_binding_enabled';
+
     private static ?string $APPROOV_SECRET = null;
 
     public static function hasText(?string $value): bool
@@ -21,24 +23,24 @@ class ApproovApplication
 
     public static function isApproovEnabled(): bool
     {
-        return self::$APPROOV_ENABLED;
+        return Cache::get(self::APPROOV_ENABLED_KEY, true);
     }
 
     public static function isTokenBindingEnabled(): bool
     {
-        return self::$TOKEN_BINDING_ENABLED;
+        return Cache::get(self::TOKEN_BINDING_ENABLED_KEY, true);
     }
 
     public static function enableApproov(): void
     {
-        self::$APPROOV_ENABLED = true;
-        self::$TOKEN_BINDING_ENABLED = true;
+        Cache::forever(self::APPROOV_ENABLED_KEY, true);
+        Cache::forever(self::TOKEN_BINDING_ENABLED_KEY, true);
     }
 
     public static function disableApproov(): void
     {
-        self::$APPROOV_ENABLED = false;
-        self::$TOKEN_BINDING_ENABLED = false;
+        Cache::forever(self::APPROOV_ENABLED_KEY, false);
+        Cache::forever(self::TOKEN_BINDING_ENABLED_KEY, false);
     }
 
     public static function approovSecret(): string
@@ -74,13 +76,13 @@ class ApproovApplication
 
     public static function enableTokenBindingEndpoint(): array
     {
-        self::$TOKEN_BINDING_ENABLED = true;
+        Cache::forever(self::TOKEN_BINDING_ENABLED_KEY, true);
         return self::statePayload();
     }
 
     public static function disableTokenBindingEndpoint(): array
     {
-        self::$TOKEN_BINDING_ENABLED = false;
+        Cache::forever(self::TOKEN_BINDING_ENABLED_KEY, false);
         return self::statePayload();
     }
 
