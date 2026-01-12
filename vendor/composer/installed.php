@@ -3,7 +3,7 @@
         'name' => 'approov/quickstart-php-laravel-token-check',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '919ef9a904c688d4649a511054ecbfd8c3cac450',
+        'reference' => '3df195b3d86a11e77bf939e0db4c24639b7d20a2',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'approov/quickstart-php-laravel-token-check' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '919ef9a904c688d4649a511054ecbfd8c3cac450',
+            'reference' => '3df195b3d86a11e77bf939e0db4c24639b7d20a2',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
