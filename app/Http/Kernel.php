@@ -13,6 +13,7 @@ class Kernel extends HttpKernel
     protected $middlewareGroups = [
         'web' => [],
         'api' => [
+            \App\Http\Middleware\RequestLogger::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];

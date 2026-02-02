@@ -14,3 +14,4 @@ yarn-error.log
 .config/
 .DS_Store
 /storage/logs/*.log
+vendor/

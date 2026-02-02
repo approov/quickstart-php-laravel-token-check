@@ -1,7 +1,13 @@
 <?php
 
+use Monolog\Handler\NullHandler;
+
 return [
     'default' => env('LOG_CHANNEL', 'stack'),
+    'deprecations' => [
+        'channel' => env('LOG_DEPRECATIONS_CHANNEL', 'null'),
+        'trace' => false,
+    ],
     'channels' => [
         'stack' => [
             'driver' => 'stack',
@@ -18,7 +24,8 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
         ],
         'null' => [
-            'driver' => 'null',
+            'driver' => 'monolog',
+            'handler' => NullHandler::class,
         ],
     ],
 ];

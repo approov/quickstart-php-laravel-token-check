@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use App\ApproovApplication;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 class ApproovTokenVerifier
@@ -15,6 +14,10 @@ class ApproovTokenVerifier
         '/token-binding',
         '/token-double-binding',
     ];
+    private const REQUEST_ID_HEADER = 'X-Request-Id';
+    private const REQUEST_ID_ATTRIBUTE = 'request_id';
+    private const APPROOV_REQUIRED_HEADERS_ATTRIBUTE = 'approov_required_headers';
+    private const APPROOV_FAILURE_ATTRIBUTE = 'approov_failure';
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -33,6 +36,13 @@ class ApproovTokenVerifier
 
     protected function doFilterInternal(Request $request, Closure $next): Response
     {
+        if (ApproovApplication::isApproovEnabled()) {
+            $request->attributes->set(
+                self::APPROOV_REQUIRED_HEADERS_ATTRIBUTE,
+                $this->requiredHeaders($request)
+            );
+        }
+
         if (!ApproovApplication::isApproovEnabled()) {
             $request->attributes->set('approov_auth', $this->disabledAuthentication());
             return $next($request);
@@ -40,7 +50,7 @@ class ApproovTokenVerifier
 
         $rawToken = $request->header(ApproovApplication::APPROOV_HEADER);
         if (!ApproovApplication::hasText($rawToken)) {
-            return $this->unauthorized();
+            return $this->unauthorized($request, 'missing_approov_token');
         }
 
         try {
@@ -49,22 +59,102 @@ class ApproovTokenVerifier
 
             if ($this->needsBindingCheck($path) && ApproovApplication::isTokenBindingEnabled()) {
                 $bindingValue = $this->extractBindingValue($path, $request);
-                if (!ApproovApplication::hasText($bindingValue) || !$this->isBindingValid($bindingValue, $claims)) {
-                    return $this->unauthorized();
+                if (!ApproovApplication::hasText($bindingValue)) {
+                    return $this->unauthorized($request, 'missing_binding_header');
+                }
+                if (!$this->isBindingValid($bindingValue, $claims)) {
+                    return $this->unauthorized($request, 'binding_mismatch');
                 }
             }
 
             $request->attributes->set('approov_auth', ['principal' => 'approov-token']);
             return $next($request);
         } catch (\Throwable $e) {
-            Log::error('Approov token verification failed: ' . $e->getMessage());
-            return $this->unauthorized();
+            return $this->unauthorized($request, 'token_verification_failed', [
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+            ]);
         }
     }
 
-    protected function unauthorized(): Response
+    protected function unauthorized(Request $request, string $reason, array $context = []): Response
     {
+        $context = array_merge($this->baseLogContext($request, $reason), $context);
+        $request->attributes->set(self::APPROOV_FAILURE_ATTRIBUTE, $context);
+
         return response()->json(['message' => 'Approov authentication failed.'], 401);
+    }
+
+    private function baseLogContext(Request $request, string $reason): array
+    {
+        $context = [
+            'reason' => $reason,
+            'method' => $request->getMethod(),
+            'path' => $request->getPathInfo(),
+            'approov' => [
+                'enabled' => ApproovApplication::isApproovEnabled(),
+                'binding_enabled' => ApproovApplication::isTokenBindingEnabled(),
+                'headers' => $this->approovHeaderFlags($request),
+            ],
+        ];
+
+        $requestId = $this->requestId($request);
+        if ($requestId !== null) {
+            $context['request_id'] = $requestId;
+        }
+
+        return $context;
+    }
+
+    private function requestId(Request $request): ?string
+    {
+        $value = $request->attributes->get(self::REQUEST_ID_ATTRIBUTE);
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        $fromHeader = $request->header(self::REQUEST_ID_HEADER);
+        if (!is_string($fromHeader)) {
+            return null;
+        }
+
+        $trimmed = trim($fromHeader);
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function approovHeaderFlags(Request $request): array
+    {
+        $flags = [
+            'approov_token' => ApproovApplication::hasText($request->header(ApproovApplication::APPROOV_HEADER)),
+        ];
+
+        if (ApproovApplication::isTokenBindingEnabled() && $this->needsBindingCheck($request->getPathInfo())) {
+            $flags['authorization'] = ApproovApplication::hasText($request->header(ApproovApplication::AUTH_HEADER));
+            if ($request->getPathInfo() === '/token-double-binding') {
+                $flags['content_digest'] = ApproovApplication::hasText($request->header(ApproovApplication::DIGEST_HEADER));
+            }
+        }
+
+        return $flags;
+    }
+
+    private function requiredHeaders(Request $request): array
+    {
+        $headers = [ApproovApplication::APPROOV_HEADER];
+
+        if (!ApproovApplication::isTokenBindingEnabled()) {
+            return $headers;
+        }
+
+        $path = $request->getPathInfo();
+        if ($path === '/token-binding' || $path === '/token-double-binding') {
+            $headers[] = ApproovApplication::AUTH_HEADER;
+        }
+        if ($path === '/token-double-binding') {
+            $headers[] = ApproovApplication::DIGEST_HEADER;
+        }
+
+        return $headers;
     }
 
     protected function verifyApproovToken(string $token): array
