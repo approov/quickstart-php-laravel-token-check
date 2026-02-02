@@ -9,13 +9,13 @@ This project provides a server-side example of Approov token verification for a 
 
 In this example, Approov token check is implemented in `ApproovTokenVerifier.php`. The responsibilities break down as follows:
 
-1. **JWT Approov Token validation (signature + expiry)** is handled by [verifyApproovToken](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L160-L185) and [validateExpiration](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L228-L238). It verifies the HMAC signature using the JWT `alg` (HS256/HS384/HS512) and rejects tokens that are missing or past `exp`.
+1. **JWT Approov Token validation (signature + expiry)** is handled by [verifyApproovToken](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L161-L186) and [validateExpiration](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L229-L238). It verifies the HMAC (HS256) signature and rejects tokens that are missing or past `exp`.
 
-2. **Token binding (pay + hash)** is implemented by [isBindingValid + hashBase64Url](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L207-L220). It computes `base64(sha256(binding_value))` and compares it to `pay`.
+2. **Token binding (pay + hash)** is implemented by [isBindingValid + hashBase64Url](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L208-L222). It computes `base64(sha256(binding_value))` and compares it to `pay`.
 
-3. **Middleware enforcement** is done by [doFilterInternal](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L37-L78). Requests without valid token/binding are rejected with 401.
+3. **Middleware enforcement** is done by [doFilterInternal](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L37-L79). Requests without valid token/binding are rejected with 401.
 
-4. **Binding value selection (what gets hashed)** is in [extractBindingValue](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L192-L205). It uses `Authorization` for single binding, or `Authorization` + `Content-Digest` for double binding.
+4. **Binding value selection (what gets hashed)** is in [extractBindingValue](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L193-L206). It uses `Authorization` for single binding, or `Authorization` + `Content-Digest` for double binding.
 
 5. **Protected route requirements** are defined by [APPROOV_PROTECTED_PATHS + shouldNotFilter](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L12-L35).
 

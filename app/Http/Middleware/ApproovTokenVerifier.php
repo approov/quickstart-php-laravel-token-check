@@ -37,6 +37,7 @@ class ApproovTokenVerifier
     protected function doFilterInternal(Request $request, Closure $next): Response
     {
         if (ApproovApplication::isApproovEnabled()) {
+            ApproovApplication::logIfApproovSecretMissing();
             $request->attributes->set(
                 self::APPROOV_REQUIRED_HEADERS_ATTRIBUTE,
                 $this->requiredHeaders($request)

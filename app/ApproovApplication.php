@@ -15,6 +15,7 @@ class ApproovApplication
     private const TOKEN_BINDING_ENABLED_KEY = 'approov_token_binding_enabled';
 
     private static ?string $APPROOV_SECRET = null;
+    private static bool $APPROOV_SECRET_LOGGED = false;
 
     public static function hasText(?string $value): bool
     {
@@ -50,6 +51,14 @@ class ApproovApplication
         }
 
         return self::$APPROOV_SECRET;
+    }
+
+    public static function logIfApproovSecretMissing(): void
+    {
+        $secret = env('APPROOV_BASE64URL_SECRET');
+        if (self::isApproovSecretMissing($secret)) {
+            self::logApproovSecretMissingOnce();
+        }
     }
 
     public static function home(): array
@@ -129,8 +138,8 @@ class ApproovApplication
     private static function loadApproovSecret(): string
     {
         $secret = env('APPROOV_BASE64URL_SECRET');
-        if (!self::hasText($secret)) {
-            Log::error('APPROOV_BASE64URL_SECRET environment variable is not set');
+        if (self::isApproovSecretMissing($secret)) {
+            self::logApproovSecretMissingOnce();
             throw new \RuntimeException('APPROOV_BASE64URL_SECRET environment variable is not set');
         }
 
@@ -141,6 +150,28 @@ class ApproovApplication
         }
 
         return $decoded;
+    }
+
+    private static function isApproovSecretMissing(?string $secret): bool
+    {
+        if (!self::hasText($secret)) {
+            return true;
+        }
+
+        $trimmed = trim($secret);
+        $unquoted = trim($trimmed, "\"'");
+        $lowered = strtolower($unquoted);
+        return $lowered === 'approov_base64url_secret_here';
+    }
+
+    private static function logApproovSecretMissingOnce(): void
+    {
+        if (self::$APPROOV_SECRET_LOGGED) {
+            return;
+        }
+
+        Log::error('APPROOV_BASE64URL_SECRET environment variable is not set');
+        self::$APPROOV_SECRET_LOGGED = true;
     }
 
     private static function decodeBase64Url(string $value): string
