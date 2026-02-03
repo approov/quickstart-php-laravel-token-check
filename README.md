@@ -236,9 +236,9 @@ curl -X GET http://localhost:8080/approov-state       # check current state
 
 **Environments where the quickstart was tested:**
 ```text
-* Runtime: PHP 8.1.33
-* Framework: Laravel 10.50.0
-* Build Tool: Composer 2.8.11
+* Runtime: PHP 8.5.2
+* Framework: Laravel 12.49.0
+* Build Tool: Composer 2.9.4
 ```
 
 If you encounter any problems while following this guide, or have any other concerns, please let us know by opening an issue [here](https://github.com/approov/quickstart-php-laravel-token-check/issues) and we will be happy to assist you.

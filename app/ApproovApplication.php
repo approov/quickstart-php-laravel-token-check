@@ -7,13 +7,15 @@ use Illuminate\Support\Facades\Log;
 
 class ApproovApplication
 {
-    public const APPROOV_HEADER = 'Approov-Token';
     public const AUTH_HEADER = 'Authorization';
     public const SESSION_ID_HEADER = 'SessionId';
+
+    private const DEFAULT_APPROOV_HEADER = 'Approov-Token';
 
     private const APPROOV_ENABLED_KEY = 'approov_enabled';
     private const TOKEN_BINDING_ENABLED_KEY = 'approov_token_binding_enabled';
 
+    private static ?string $APPROOV_HEADER = null;
     private static ?string $APPROOV_SECRET = null;
     private static bool $APPROOV_SECRET_LOGGED = false;
 
@@ -25,6 +27,17 @@ class ApproovApplication
     public static function isApproovEnabled(): bool
     {
         return Cache::get(self::APPROOV_ENABLED_KEY, true);
+    }
+
+    public static function approovHeader(): string
+    {
+        if (self::$APPROOV_HEADER === null) {
+            $value = env('APPROOV_TOKEN_HEADER', self::DEFAULT_APPROOV_HEADER);
+            $trimmed = is_string($value) ? trim($value) : '';
+            self::$APPROOV_HEADER = $trimmed !== '' ? $trimmed : self::DEFAULT_APPROOV_HEADER;
+        }
+
+        return self::$APPROOV_HEADER;
     }
 
     public static function isTokenBindingEnabled(): bool
