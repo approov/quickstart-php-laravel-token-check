@@ -48,7 +48,7 @@ Route::middleware([ApproovTokenVerifier::class])->group(function () {
         return response()->json(
             ApproovApplication::tokenDoubleBinding(
                 $request->header(ApproovApplication::AUTH_HEADER),
-                $request->header(ApproovApplication::DIGEST_HEADER)
+                $request->header(ApproovApplication::SESSION_ID_HEADER)
             )
         );
     });

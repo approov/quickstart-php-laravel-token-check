@@ -322,9 +322,9 @@ main() {
 		-H "approov-token: $(<"${TOKDIR}/approov_token_bind_auth_invalid")" \
 		"${BASE_URL}/token-binding"
 
-	# 3) Token Binding ["Authorization", "Content-Digest"].
+	# 3) Token Binding ["Authorization", "SessionId"].
 	local AUTH_VAL2="ExampleAuthToken=="
-	local CD_VAL="ContentDigest=="
+	local CD_VAL="123"
 	export HASH_INPUT="${AUTH_VAL2}${CD_VAL}"
 
 	gen_token \
@@ -338,7 +338,7 @@ main() {
 		"Double Binding - valid token and headers" \
 		"${success_code}" \
 		-H "Authorization: ${AUTH_VAL2}" \
-		-H "Content-Digest: ${CD_VAL}" \
+		-H "SessionId: ${CD_VAL}" \
 		-H "approov-token: $(<"${TOKDIR}/approov_token_bind_auth_cd_valid")" \
 		"${BASE_URL}/token-double-binding"
 
@@ -354,7 +354,7 @@ main() {
 		"Double Binding - incorrect binding headers" \
 		"${failure_code}" \
 		-H "Authorization: BadAuthToken==" \
-		-H "Content-Digest: BadContentDigest==" \
+		-H "SessionId: Bad123" \
 		-H "approov-token: $(<"${TOKDIR}/approov_token_bind_auth_cd_valid")" \
 		"${BASE_URL}/token-double-binding"
 
@@ -370,7 +370,7 @@ main() {
 		"Double Binding - invalid token" \
 		"${failure_code}" \
 		-H "Authorization: ${AUTH_VAL2}" \
-		-H "Content-Digest: ${CD_VAL}" \
+		-H "SessionId: ${CD_VAL}" \
 		-H "approov-token: $(<"${TOKDIR}/approov_token_bind_auth_cd_invalid")" \
 		"${BASE_URL}/token-double-binding"
 

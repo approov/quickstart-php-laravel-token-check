@@ -9,7 +9,7 @@ class ApproovApplication
 {
     public const APPROOV_HEADER = 'Approov-Token';
     public const AUTH_HEADER = 'Authorization';
-    public const DIGEST_HEADER = 'Content-Digest';
+    public const SESSION_ID_HEADER = 'SessionId';
 
     private const APPROOV_ENABLED_KEY = 'approov_enabled';
     private const TOKEN_BINDING_ENABLED_KEY = 'approov_token_binding_enabled';
@@ -112,11 +112,11 @@ class ApproovApplication
         return $response;
     }
 
-    public static function tokenDoubleBinding(?string $authorization, ?string $contentDigest): array
+    public static function tokenDoubleBinding(?string $authorization, ?string $sessionId): array
     {
         $response = self::infoPayload("Protected endpoint '/token-double-binding'; dual token binding enforced.");
         $response['authorizationHeaderPresent'] = self::hasText($authorization);
-        $response['contentDigestHeaderPresent'] = self::hasText($contentDigest);
+        $response['sessionIdHeaderPresent'] = self::hasText($sessionId);
         return $response;
     }
 

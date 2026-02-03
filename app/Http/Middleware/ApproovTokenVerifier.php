@@ -132,7 +132,7 @@ class ApproovTokenVerifier
         if (ApproovApplication::isTokenBindingEnabled() && $this->needsBindingCheck($request->getPathInfo())) {
             $flags['authorization'] = ApproovApplication::hasText($request->header(ApproovApplication::AUTH_HEADER));
             if ($request->getPathInfo() === '/token-double-binding') {
-                $flags['content_digest'] = ApproovApplication::hasText($request->header(ApproovApplication::DIGEST_HEADER));
+                $flags['session_id'] = ApproovApplication::hasText($request->header(ApproovApplication::SESSION_ID_HEADER));
             }
         }
 
@@ -152,7 +152,7 @@ class ApproovTokenVerifier
             $headers[] = ApproovApplication::AUTH_HEADER;
         }
         if ($path === '/token-double-binding') {
-            $headers[] = ApproovApplication::DIGEST_HEADER;
+            $headers[] = ApproovApplication::SESSION_ID_HEADER;
         }
 
         return $headers;
@@ -197,12 +197,12 @@ class ApproovTokenVerifier
         }
 
         $authorization = $this->trimOrNull($request->header(ApproovApplication::AUTH_HEADER));
-        $digest = $this->trimOrNull($request->header(ApproovApplication::DIGEST_HEADER));
-        if (!ApproovApplication::hasText($authorization) || !ApproovApplication::hasText($digest)) {
+        $sessionId = $this->trimOrNull($request->header(ApproovApplication::SESSION_ID_HEADER));
+        if (!ApproovApplication::hasText($authorization) || !ApproovApplication::hasText($sessionId)) {
             return null;
         }
 
-        return $authorization . $digest;
+        return $authorization . $sessionId;
     }
 
     protected function isBindingValid(string $bindingValue, array $claims): bool
