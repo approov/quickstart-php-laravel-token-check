@@ -15,3 +15,4 @@ yarn-error.log
 .DS_Store
 /storage/logs/*.log
 vendor/
+storage/framework/cache/data/
