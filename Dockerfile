@@ -11,7 +11,12 @@ RUN apt-get update \
 
 COPY . .
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+RUN mkdir -p bootstrap/cache \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/testing \
+    storage/framework/views \
+    storage/logs \
+    && composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
 CMD ["bash", "scripts/build.sh"]
-
