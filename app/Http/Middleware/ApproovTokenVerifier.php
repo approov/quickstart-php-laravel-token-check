@@ -1,7 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Middleware;
 
+use App\Approov\ApproovAuthException;
+use App\Approov\ApproovErrorCode;
 use App\ApproovApplication;
 use Closure;
 use Illuminate\Http\Request;
@@ -13,6 +17,8 @@ class ApproovTokenVerifier
     private const REQUEST_ID_ATTRIBUTE = 'request_id';
     private const APPROOV_REQUIRED_HEADERS_ATTRIBUTE = 'approov_required_headers';
     private const APPROOV_FAILURE_ATTRIBUTE = 'approov_failure';
+    private const UNAUTHORIZED_MESSAGE = 'Approov authentication failed.';
+    private const INTERNAL_MESSAGE = 'Approov verification failed.';
 
     public function handle(Request $request, Closure $next, ...$boundHeaders): Response
     {
@@ -38,7 +44,7 @@ class ApproovTokenVerifier
 
         $rawToken = $request->header(ApproovApplication::approovHeader());
         if (!ApproovApplication::hasText($rawToken)) {
-            return $this->unauthorized($request, 'missing_approov_token', $bindingHeaders);
+            $this->failUnauthorized($request, ApproovErrorCode::MissingApproovToken, $bindingHeaders);
         }
 
         try {
@@ -47,35 +53,128 @@ class ApproovTokenVerifier
             if (ApproovApplication::isTokenBindingEnabled() && $bindingHeaders !== []) {
                 $bindingValue = $this->extractBindingValue($request, $bindingHeaders);
                 if (!ApproovApplication::hasText($bindingValue)) {
-                    return $this->unauthorized($request, 'missing_binding_header', $bindingHeaders);
+                    $this->failUnauthorized($request, ApproovErrorCode::MissingBindingHeader, $bindingHeaders);
                 }
-                if (!$this->isBindingValid($bindingValue, $claims)) {
-                    return $this->unauthorized($request, 'binding_mismatch', $bindingHeaders);
+
+                $expectedBindingHash = $this->payClaim($claims);
+                if (!ApproovApplication::hasText($expectedBindingHash)) {
+                    $this->failUnauthorized($request, ApproovErrorCode::MissingPayClaim, $bindingHeaders);
+                }
+
+                $computedBindingHash = $this->hashBase64($bindingValue);
+                if (!hash_equals($expectedBindingHash, $computedBindingHash)) {
+                    $this->failUnauthorized($request, ApproovErrorCode::BindingMismatch, $bindingHeaders);
                 }
             }
 
             $request->attributes->set('approov_auth', ['principal' => 'approov-token']);
             return $next($request);
         } catch (\Throwable $e) {
-            return $this->unauthorized($request, 'token_verification_failed', $bindingHeaders, [
-                'error' => $e->getMessage(),
-                'exception' => get_class($e),
-            ]);
+            $this->handleVerificationException($request, $e, $bindingHeaders);
         }
     }
 
-    protected function unauthorized(Request $request, string $reason, array $bindingHeaders = [], array $context = []): Response
-    {
-        $context = array_merge($this->baseLogContext($request, $reason, $bindingHeaders), $context);
-        $request->attributes->set(self::APPROOV_FAILURE_ATTRIBUTE, $context);
-
-        return response()->json(['message' => 'Approov authentication failed.'], 401);
+    protected function failUnauthorized(
+        Request $request,
+        ApproovErrorCode $errorCode,
+        array $bindingHeaders = [],
+        array $context = []
+    ): never {
+        $this->fail($request, $errorCode, 401, self::UNAUTHORIZED_MESSAGE, $bindingHeaders, $context);
     }
 
-    private function baseLogContext(Request $request, string $reason, array $bindingHeaders): array
+    protected function failServer(
+        Request $request,
+        ApproovErrorCode $errorCode,
+        array $bindingHeaders = [],
+        array $context = []
+    ): never {
+        $this->fail($request, $errorCode, 500, self::INTERNAL_MESSAGE, $bindingHeaders, $context);
+    }
+
+    private function fail(
+        Request $request,
+        ApproovErrorCode $errorCode,
+        int $httpStatus,
+        string $safeMessage,
+        array $bindingHeaders = [],
+        array $context = []
+    ): never {
+        $context = array_merge($this->baseLogContext($request, $errorCode, $bindingHeaders), $context);
+        $request->attributes->set(self::APPROOV_FAILURE_ATTRIBUTE, $context);
+
+        throw new ApproovAuthException($errorCode, $httpStatus, $safeMessage, $context);
+    }
+
+    private function handleVerificationException(Request $request, \Throwable $e, array $bindingHeaders): never
+    {
+        if ($e instanceof ApproovAuthException) {
+            throw $e;
+        }
+
+        $context = [
+            'error' => $e->getMessage(),
+            'exception' => get_class($e),
+        ];
+
+        if ($e instanceof \UnexpectedValueException) {
+            $errorCode = $this->unexpectedValueErrorCode($e);
+            if ($this->isUnauthorizedError($errorCode)) {
+                $this->failUnauthorized($request, $errorCode, $bindingHeaders, $context);
+            }
+
+            $this->failServer($request, $errorCode, $bindingHeaders, $context);
+        }
+
+        if ($e instanceof \RuntimeException) {
+            $this->failServer($request, $this->runtimeErrorCode($e), $bindingHeaders, $context);
+        }
+
+        $this->failServer($request, ApproovErrorCode::InternalVerificationError, $bindingHeaders, $context);
+    }
+
+    private function unexpectedValueErrorCode(\UnexpectedValueException $e): ApproovErrorCode
+    {
+        return match ($e->getMessage()) {
+            'Invalid JWT format.',
+            'Invalid JWT payload.',
+            'Invalid base64url data.',
+            'Approov token missing expiration.' => ApproovErrorCode::InvalidTokenFormat,
+            'Unsupported JWT algorithm.' => ApproovErrorCode::UnsupportedTokenAlgorithm,
+            'Invalid JWT signature.' => ApproovErrorCode::InvalidTokenSignature,
+            'Approov token expired.' => ApproovErrorCode::TokenExpired,
+            default => ApproovErrorCode::InternalVerificationError,
+        };
+    }
+
+    private function runtimeErrorCode(\RuntimeException $e): ApproovErrorCode
+    {
+        return match ($e->getMessage()) {
+            'APPROOV_BASE64URL_SECRET environment variable is not set' => ApproovErrorCode::ApproovSecretMissing,
+            'APPROOV_BASE64URL_SECRET environment variable is invalid' => ApproovErrorCode::ApproovSecretInvalid,
+            default => ApproovErrorCode::InternalVerificationError,
+        };
+    }
+
+    private function isUnauthorizedError(ApproovErrorCode $errorCode): bool
+    {
+        return match ($errorCode) {
+            ApproovErrorCode::MissingApproovToken,
+            ApproovErrorCode::InvalidTokenFormat,
+            ApproovErrorCode::UnsupportedTokenAlgorithm,
+            ApproovErrorCode::InvalidTokenSignature,
+            ApproovErrorCode::TokenExpired,
+            ApproovErrorCode::MissingBindingHeader,
+            ApproovErrorCode::MissingPayClaim,
+            ApproovErrorCode::BindingMismatch => true,
+            default => false,
+        };
+    }
+
+    private function baseLogContext(Request $request, ApproovErrorCode $errorCode, array $bindingHeaders): array
     {
         $context = [
-            'reason' => $reason,
+            'reason' => $errorCode->value,
             'method' => $request->getMethod(),
             'path' => $request->getPathInfo(),
             'approov' => [
@@ -178,18 +277,18 @@ class ApproovTokenVerifier
         return implode('', $values);
     }
 
-    protected function isBindingValid(string $bindingValue, array $claims): bool
+    protected function payClaim(array $claims): ?string
     {
         $expected = $claims['pay'] ?? null;
-        if (!ApproovApplication::hasText($expected)) {
-            return false;
+        if (!is_string($expected)) {
+            return null;
         }
 
-        $computed = $this->hashBase64Url($bindingValue);
-        return trim($expected) === $computed;
+        $trimmed = trim($expected);
+        return $trimmed === '' ? null : $trimmed;
     }
 
-    protected function hashBase64Url(string $value): string
+    protected function hashBase64(string $value): string
     {
         return base64_encode(hash('sha256', $value, true));
     }

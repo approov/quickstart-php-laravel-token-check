@@ -16,3 +16,5 @@ yarn-error.log
 /storage/logs/*.log
 vendor/
 storage/framework/cache/data/
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore

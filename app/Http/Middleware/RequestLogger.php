@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Approov\ApproovAuthException;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,24 +21,41 @@ class RequestLogger
     public function handle(Request $request, Closure $next): Response
     {
         $requestId = $this->ensureRequestId($request);
-        $response = $next($request);
+
+        try {
+            $response = $next($request);
+        } catch (ApproovAuthException $e) {
+            $this->logRequest($request, $e->httpStatus());
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->logRequest($request, 500);
+            throw $e;
+        }
 
         if (!$response->headers->has(self::REQUEST_ID_HEADER)) {
             $response->headers->set(self::REQUEST_ID_HEADER, $requestId);
         }
 
-        $status = $response->getStatusCode();
+        $this->logRequest($request, $response->getStatusCode());
+
+        return $response;
+    }
+
+    private function logRequest(Request $request, int $status): void
+    {
         $context = $this->buildContext($request, $status);
 
         if ($status >= 500) {
             Log::error('http.request.completed', $context);
-        } elseif ($status >= 400) {
-            Log::warning('http.request.completed', $context);
-        } else {
-            Log::info('http.request.completed', $context);
+            return;
         }
 
-        return $response;
+        if ($status >= 400) {
+            Log::warning('http.request.completed', $context);
+            return;
+        }
+
+        Log::info('http.request.completed', $context);
     }
 
     private function buildContext(Request $request, int $status): array
