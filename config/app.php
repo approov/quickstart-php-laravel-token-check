@@ -3,7 +3,7 @@
 return [
     'name' => env('APP_NAME', 'Approov Laravel'),
     'env' => env('APP_ENV', 'local'),
-    'debug' => (bool) env('APP_DEBUG', true),
+    'debug' => (bool) env('APP_DEBUG', false),
     'url' => env('APP_URL', 'http://localhost'),
     'timezone' => 'UTC',
     'locale' => 'en',

@@ -39,7 +39,7 @@ class Handler extends ExceptionHandler
 
             $response = response()->json($payload, $status);
             if ($requestId !== null) {
-                $response->headers->set('X-Request-Id', $requestId);
+                $response->headers->set('Request-Id', $requestId);
             }
 
             return $response;
@@ -53,7 +53,7 @@ class Handler extends ExceptionHandler
             return $fromAttributes;
         }
 
-        $fromHeaders = $request->header('X-Request-Id');
+        $fromHeaders = $request->header('Request-Id');
         if (!is_string($fromHeaders)) {
             return null;
         }

@@ -68,7 +68,7 @@ class ApproovApplication
 
     public static function logIfApproovSecretMissing(): void
     {
-        $secret = env('APPROOV_BASE64URL_SECRET');
+        $secret = self::normalizedApproovSecretFromEnv();
         if (self::isApproovSecretMissing($secret)) {
             self::logApproovSecretMissingOnce();
         }
@@ -150,13 +150,13 @@ class ApproovApplication
 
     private static function loadApproovSecret(): string
     {
-        $secret = env('APPROOV_BASE64URL_SECRET');
+        $secret = self::normalizedApproovSecretFromEnv();
         if (self::isApproovSecretMissing($secret)) {
             self::logApproovSecretMissingOnce();
             throw new \RuntimeException('APPROOV_BASE64URL_SECRET environment variable is not set');
         }
 
-        $decoded = self::decodeBase64Url(trim($secret));
+        $decoded = self::decodeBase64Url($secret);
         if ($decoded === '') {
             Log::error('APPROOV_BASE64URL_SECRET environment variable is invalid');
             throw new \RuntimeException('APPROOV_BASE64URL_SECRET environment variable is invalid');
@@ -167,14 +167,47 @@ class ApproovApplication
 
     private static function isApproovSecretMissing(?string $secret): bool
     {
-        if (!self::hasText($secret)) {
+        if ($secret === null) {
             return true;
         }
 
-        $trimmed = trim($secret);
-        $unquoted = trim($trimmed, "\"'");
-        $lowered = strtolower($unquoted);
-        return $lowered === 'approov_base64url_secret_here';
+        return strtolower($secret) === 'approov_base64url_secret_here';
+    }
+
+    private static function normalizedApproovSecretFromEnv(): ?string
+    {
+        return self::normalizeApproovSecret(env('APPROOV_BASE64URL_SECRET'));
+    }
+
+    private static function normalizeApproovSecret(mixed $secret): ?string
+    {
+        if (!is_string($secret)) {
+            return null;
+        }
+
+        $normalized = trim($secret);
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (self::hasWrappingQuotes($normalized)) {
+            $normalized = trim(substr($normalized, 1, -1));
+        }
+
+        return $normalized === '' ? null : $normalized;
+    }
+
+    private static function hasWrappingQuotes(string $value): bool
+    {
+        if (strlen($value) < 2) {
+            return false;
+        }
+
+        $first = $value[0];
+        $last = $value[strlen($value) - 1];
+
+        return ($first === '"' && $last === '"')
+            || ($first === "'" && $last === "'");
     }
 
     private static function logApproovSecretMissingOnce(): void

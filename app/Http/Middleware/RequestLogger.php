@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RequestLogger
 {
-    private const REQUEST_ID_HEADER = 'X-Request-Id';
+    private const REQUEST_ID_HEADER = 'Request-Id';
     private const REQUEST_ID_ATTRIBUTE = 'request_id';
     private const APPROOV_REQUIRED_HEADERS_ATTRIBUTE = 'approov_required_headers';
     private const APPROOV_FAILURE_ATTRIBUTE = 'approov_failure';

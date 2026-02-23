@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApproovTokenVerifier
 {
-    private const REQUEST_ID_HEADER = 'X-Request-Id';
+    private const REQUEST_ID_HEADER = 'Request-Id';
     private const REQUEST_ID_ATTRIBUTE = 'request_id';
     private const APPROOV_REQUIRED_HEADERS_ATTRIBUTE = 'approov_required_headers';
     private const APPROOV_FAILURE_ATTRIBUTE = 'approov_failure';
@@ -126,6 +126,15 @@ class ApproovTokenVerifier
             $this->failServer($request, $errorCode, $bindingHeaders, $context);
         }
 
+        if ($e instanceof \TypeError || $e instanceof \ValueError) {
+            $errorCode = $this->typeOrValueErrorCode($e);
+            if ($this->isUnauthorizedError($errorCode)) {
+                $this->failUnauthorized($request, $errorCode, $bindingHeaders, $context);
+            }
+
+            $this->failServer($request, $errorCode, $bindingHeaders, $context);
+        }
+
         if ($e instanceof \RuntimeException) {
             $this->failServer($request, $this->runtimeErrorCode($e), $bindingHeaders, $context);
         }
@@ -154,6 +163,62 @@ class ApproovTokenVerifier
             'APPROOV_BASE64URL_SECRET environment variable is invalid' => ApproovErrorCode::ApproovSecretInvalid,
             default => ApproovErrorCode::InternalVerificationError,
         };
+    }
+
+    private function typeOrValueErrorCode(\Throwable $e): ApproovErrorCode
+    {
+        if ($this->isAlgorithmTypeError($e)) {
+            return ApproovErrorCode::UnsupportedTokenAlgorithm;
+        }
+
+        if ($this->isClaimTypeError($e)) {
+            return ApproovErrorCode::InvalidTokenFormat;
+        }
+
+        return ApproovErrorCode::InternalVerificationError;
+    }
+
+    private function isAlgorithmTypeError(\Throwable $e): bool
+    {
+        if ($e instanceof \TypeError && str_contains($e->getMessage(), 'mapJwtAlgorithm')) {
+            return true;
+        }
+
+        if ($e instanceof \ValueError && str_contains($e->getMessage(), 'hash_hmac')) {
+            return true;
+        }
+
+        foreach ($e->getTrace() as $frame) {
+            if (($frame['class'] ?? null) !== self::class) {
+                continue;
+            }
+
+            if (($frame['function'] ?? null) === 'mapJwtAlgorithm') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isClaimTypeError(\Throwable $e): bool
+    {
+        foreach ($e->getTrace() as $frame) {
+            if (($frame['class'] ?? null) !== self::class) {
+                continue;
+            }
+
+            if (in_array($frame['function'] ?? '', [
+                'verifyApproovToken',
+                'decodeJwtPart',
+                'base64UrlDecode',
+                'validateExpiration',
+            ], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function isUnauthorizedError(ApproovErrorCode $errorCode): bool

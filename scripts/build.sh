@@ -27,6 +27,83 @@ CONTAINER_NAME="${CONTAINER_NAME:-approov-quickstart-laravel-app}"
 ENV_FILE="${ENV_FILE:-.env}"
 RUNTIME_BIN_DIR="${RUNTIME_BIN_DIR:-}"            # optional runtime-specific bin path
 
+trim_whitespace() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s' "$value"
+}
+
+strip_wrapping_quotes() {
+  local value="$1"
+  if [[ "$value" =~ ^\".*\"$ ]] || [[ "$value" =~ ^\'.*\'$ ]]; then
+    value="${value:1:-1}"
+  fi
+  printf '%s' "$value"
+}
+
+decode_base64_stdin() {
+  if printf '' | base64 --decode >/dev/null 2>&1; then
+    base64 --decode
+    return
+  fi
+  if printf '' | base64 -D >/dev/null 2>&1; then
+    base64 -D
+    return
+  fi
+  return 127
+}
+
+is_valid_base64url() {
+  local value="$1"
+  local normalized
+
+  [[ "$value" =~ ^[A-Za-z0-9_-]+={0,2}$ ]] || return 1
+
+  # "=" padding is allowed only at the end.
+  if [[ "${value%%=*}" == *"="* ]]; then
+    return 1
+  fi
+
+  normalized="$(printf '%s' "$value" | tr '_-' '/+')"
+  case $(( ${#normalized} % 4 )) in
+    0) ;;
+    2) normalized="${normalized}==" ;;
+    3) normalized="${normalized}=" ;;
+    *) return 1 ;;
+  esac
+
+  printf '%s' "$normalized" | decode_base64_stdin >/dev/null 2>&1
+}
+
+validate_approov_secret_env() {
+  local env_file="$1" key="$2" placeholder="$3"
+  local raw_value
+  local secret_value
+
+  if ! grep -Eq "^[[:space:]]*${key}=" "$env_file"; then
+    fail "${key} is missing in ${env_file}. Set ${key}=<base64url_secret> before running."
+  fi
+
+  raw_value="$(
+    grep -E "^[[:space:]]*${key}=" "$env_file" |
+      tail -n 1 |
+      sed -E "s/^[[:space:]]*${key}=//"
+  )"
+
+  secret_value="$(trim_whitespace "$raw_value")"
+  secret_value="$(strip_wrapping_quotes "$secret_value")"
+  secret_value="$(trim_whitespace "$secret_value")"
+
+  if [[ -z "$secret_value" || "$secret_value" == "$placeholder" ]]; then
+    fail "${key} is not set. Please set ${key}=<base64url_secret> in ${env_file} before running."
+  fi
+
+  if ! is_valid_base64url "$secret_value"; then
+    fail "${key} is invalid. Please set ${key}=<base64url_secret> in ${env_file} before running."
+  fi
+}
+
 in_container() {
   [[ "$RUN_MODE" == "container" ]] || [[ -f "/.dockerenv" ]]
 }
@@ -45,12 +122,17 @@ if in_container; then
 fi
 
 requirement_check docker
+requirement_check base64
 if ! command -v approov >/dev/null 2>&1; then
   info "Approov CLI not found; continuing without CLI checks (tests may need it)"
 fi
 
 [[ -f "$ENV_FILE" ]] || fail "$ENV_FILE not found. Run cp .env.example .env first."
 [[ -f Dockerfile ]] || fail "Dockerfile not found in $(pwd)"
+validate_approov_secret_env \
+  "$ENV_FILE" \
+  "${APPROOV_SECRET_ENV:-APPROOV_BASE64URL_SECRET}" \
+  "${APPROOV_SECRET_PLACEHOLDER:-approov_base64url_secret_here}"
 
 if docker ps -a --format '{{.Names}}' | grep -Fxq "$CONTAINER_NAME"; then
   info "Removing stale container ${CONTAINER_NAME}"
@@ -72,9 +154,15 @@ wait_for_service() {
   local url="$1" timeout="$2" interval="$3" elapsed=0
   info "Waiting for application to become ready at ${url}"
   until curl -fsS "$url" >/dev/null 2>&1; do
+    if ! docker ps --format '{{.Names}}' | grep -Fxq "$CONTAINER_NAME"; then
+      docker logs --tail 200 "$CONTAINER_NAME" >&2 || true
+      fail "Container ${CONTAINER_NAME} exited before becoming ready."
+    fi
+
     sleep "$interval"
     elapsed=$((elapsed + interval))
     if (( elapsed >= timeout )); then
+      docker logs --tail 200 "$CONTAINER_NAME" >&2 || true
       fail "Application did not become ready within ${timeout}s (last url: ${url})"
     fi
   done
