@@ -7,8 +7,6 @@ This project provides a server-side example of Approov token verification for a 
  - `/token-binding` - requires a valid Approov token which is bound to a header value.
  - `/token-double-binding` - requires a valid Approov token which is bound to two header values.
 
-1. **Binding value selection (what gets hashed)** is in [extractBindingValue](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L266-L278). It concatenates the configured binding header values in order and fails if any are missing.
-
 In this example, Approov token check is implemented in `ApproovTokenVerifier.php`. The responsibilities break down as follows:
 
 1. **JWT Approov Token validation (signature + expiry)** is handled by [verifyApproovToken](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L304-L329) and [validateExpiration](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L366-L376). It verifies the HMAC (HS256) signature and rejects tokens that are missing or past `exp`.
