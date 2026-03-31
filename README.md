@@ -9,45 +9,6 @@ This project provides a server-side example of Approov token verification for a 
  - `/token-binding` - requires a valid Approov token which is bound to a header value.
  - `/token-double-binding` - requires a valid Approov token which is bound to two header values.
 
-
-
-In this example, Approov token check is implemented in `ApproovTokenVerifier.php`. The responsibilities break down as follows:
-
-1. **JWT Approov Token validation (signature + expiry)** is handled by [verifyApproovToken](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L304-L329) and [validateExpiration](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L366-L376). It verifies the HMAC (HS256) signature and rejects tokens that are missing or past `exp`.
-
-2. **Token binding (pay + hash)** is implemented by [payClaim + hashBase64](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L345-L359). `payClaim` extracts the `pay` claim and `hashBase64` computes the base64-encoded SHA256 hash of the binding input string. The comparison against `pay` is performed in [doFilterInternal](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L53-L67).
-
-3. **Middleware enforcement** is done by [doFilterInternal](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L28-L75). It skips verification when Approov is disabled, otherwise it validates the JWT, optionally checks binding headers, and raises domain errors that are rendered in [Handler](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Exceptions/Handler.php#L26-L46) as JSON responses (`401` for auth/binding failures, `500` for server/configuration failures).
-
-4. **Binding value selection (the exact string that gets hashed)** is handled by [extractBindingValue](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L331-L343). It reads the configured binding headers in order and concatenates their values into a single string. If any required binding header is missing or empty, [doFilterInternal](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L54-L57) rejects the request as unauthorized.
-
-5. **Binding header configuration** is driven by middleware parameters in [handle](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L23-L26), normalized by [normalizeBindingHeaders](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L383-L398), and used by [requiredHeaders](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L293-L302) to record the required headers.
-
-6. **Protected routes and bindings are registered** in [routes/api.php](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/routes/api.php#L35-L52): `/token-check` uses `->middleware('approov')`, `/token-binding` uses `->middleware('approov:Authorization')`, and `/token-double-binding` uses `->middleware('approov:Authorization,SessionId')`.
-
-## Approov Token Verification Flow
-
-1. **Token Request:**  
-   The Approov SDK inside the mobile app securely communicates with the Approov Cloud Service to obtain a short-lived [Approov Token](https://ext.approov.io/docs/latest/approov-usage-documentation/#approov-tokens) (a signed JWT).  
-   Additionally, you can use the CLI [token commands](https://ext.approov.io/docs/latest/approov-cli-tool-reference/#token-commands) to validate tokens, generate new ones, and set the data hash.
-
-2. **Token Attachment:**  
-   The app attaches this token to every API request using the `Approov-Token` HTTP header.
-
-3. **Server Validation:**  
-   The [server verifies](https://ext.approov.io/docs/latest/approov-usage-documentation/#approov-architecture) the token using the shared Approov secret, checking its:
-    - Signature authenticity
-    - Expiration (`exp` claim)
-    - Other claims if configured
-
-4. **Token Binding (Optional):**  
-   [Token binding](https://ext.approov.io/docs/latest/approov-usage-documentation/#token-binding) is configured by the app via the Approov SDK, which hashes a chosen binding value (for example the `Authorization` header) and embeds it into the Approov token.  
-   The protected API then computes the same hash from the incoming request and verifies that it matches the `pay` claim, preventing token reuse or replay attacks. For local testing, you can also generate example tokens with a binding using the Approov CLI.
-
-5. **Request Decision:**   
-      If all checks pass → the request is trusted and processed `200 OK`.   
-      If validation fails → the server responds with `401 Unauthorized`.
-
 ## Requirements:
 
 1. ***Approov account*** - If you're new, sign up for an [Approov trial account](https://approov.io/signup).
@@ -235,6 +196,43 @@ curl -X GET http://localhost:8080/approov-state       # check current state
 ```
 
 *You can rerun the tests with Approov disabled to observe how the application behaves when the Approov protection is ***no longer active***.*
+
+In this example, Approov token check is implemented in `ApproovTokenVerifier.php`. The responsibilities break down as follows:
+
+1. **JWT Approov Token validation (signature + expiry)** is handled by [verifyApproovToken](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L304-L329) and [validateExpiration](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L366-L376). It verifies the HMAC (HS256) signature and rejects tokens that are missing or past `exp`.
+
+2. **Token binding (pay + hash)** is implemented by [payClaim + hashBase64](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L345-L359). `payClaim` extracts the `pay` claim and `hashBase64` computes the base64-encoded SHA256 hash of the binding input string. The comparison against `pay` is performed in [doFilterInternal](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L53-L67).
+
+3. **Middleware enforcement** is done by [doFilterInternal](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L28-L75). It skips verification when Approov is disabled, otherwise it validates the JWT, optionally checks binding headers, and raises domain errors that are rendered in [Handler](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Exceptions/Handler.php#L26-L46) as JSON responses (`401` for auth/binding failures, `500` for server/configuration failures).
+
+4. **Binding value selection (the exact string that gets hashed)** is handled by [extractBindingValue](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L331-L343). It reads the configured binding headers in order and concatenates their values into a single string. If any required binding header is missing or empty, [doFilterInternal](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L54-L57) rejects the request as unauthorized.
+
+5. **Binding header configuration** is driven by middleware parameters in [handle](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L23-L26), normalized by [normalizeBindingHeaders](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L383-L398), and used by [requiredHeaders](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/app/Http/Middleware/ApproovTokenVerifier.php#L293-L302) to record the required headers.
+
+6. **Protected routes and bindings are registered** in [routes/api.php](https://github.com/approov/quickstart-php-laravel-token-check/blob/refactor/laravel-quickstart/routes/api.php#L35-L52): `/token-check` uses `->middleware('approov')`, `/token-binding` uses `->middleware('approov:Authorization')`, and `/token-double-binding` uses `->middleware('approov:Authorization,SessionId')`.
+
+## Approov Token Verification Flow
+
+1. **Token Request:**  
+   The Approov SDK inside the mobile app securely communicates with the Approov Cloud Service to obtain a short-lived [Approov Token](https://ext.approov.io/docs/latest/approov-usage-documentation/#approov-tokens) (a signed JWT).  
+   Additionally, you can use the CLI [token commands](https://ext.approov.io/docs/latest/approov-cli-tool-reference/#token-commands) to validate tokens, generate new ones, and set the data hash.
+
+2. **Token Attachment:**  
+   The app attaches this token to every API request using the `Approov-Token` HTTP header.
+
+3. **Server Validation:**  
+   The [server verifies](https://ext.approov.io/docs/latest/approov-usage-documentation/#approov-architecture) the token using the shared Approov secret, checking its:
+    - Signature authenticity
+    - Expiration (`exp` claim)
+    - Other claims if configured
+
+4. **Token Binding (Optional):**  
+   [Token binding](https://ext.approov.io/docs/latest/approov-usage-documentation/#token-binding) is configured by the app via the Approov SDK, which hashes a chosen binding value (for example the `Authorization` header) and embeds it into the Approov token.  
+   The protected API then computes the same hash from the incoming request and verifies that it matches the `pay` claim, preventing token reuse or replay attacks. For local testing, you can also generate example tokens with a binding using the Approov CLI.
+
+5. **Request Decision:**   
+      If all checks pass → the request is trusted and processed `200 OK`.   
+      If validation fails → the server responds with `401 Unauthorized`.
 
 ## Reporting Issues
 

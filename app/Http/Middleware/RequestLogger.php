@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Approov\ApproovAuthException;
+use App\Approov\Exceptions\ApproovAuthException;
+use App\Approov\Support\ApproovRequestAttributes;
+use App\Approov\Verification\AuthContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -13,11 +15,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RequestLogger
 {
-    private const REQUEST_ID_HEADER = 'Request-Id';
-    private const REQUEST_ID_ATTRIBUTE = 'request_id';
-    private const APPROOV_REQUIRED_HEADERS_ATTRIBUTE = 'approov_required_headers';
-    private const APPROOV_FAILURE_ATTRIBUTE = 'approov_failure';
-
     public function handle(Request $request, Closure $next): Response
     {
         $requestId = $this->ensureRequestId($request);
@@ -32,8 +29,8 @@ class RequestLogger
             throw $e;
         }
 
-        if (!$response->headers->has(self::REQUEST_ID_HEADER)) {
-            $response->headers->set(self::REQUEST_ID_HEADER, $requestId);
+        if (!$response->headers->has(ApproovRequestAttributes::REQUEST_ID_HEADER)) {
+            $response->headers->set(ApproovRequestAttributes::REQUEST_ID_HEADER, $requestId);
         }
 
         $this->logRequest($request, $response->getStatusCode());
@@ -79,18 +76,28 @@ class RequestLogger
 
     private function approovRequiredHeaders(Request $request): array
     {
-        $value = $request->attributes->get(self::APPROOV_REQUIRED_HEADERS_ATTRIBUTE);
+        $value = $request->attributes->get(ApproovRequestAttributes::REQUIRED_HEADERS);
         return is_array($value) ? $value : [];
     }
 
     private function summary(Request $request, int $status): string
     {
-        $failure = $request->attributes->get(self::APPROOV_FAILURE_ATTRIBUTE);
+        $failure = $request->attributes->get(ApproovRequestAttributes::FAILURE);
         if (is_array($failure) && isset($failure['reason'])) {
             return 'approov_failed:' . $failure['reason'];
         }
 
-        $approovAuth = $request->attributes->get('approov_auth');
+        $approovAuth = $request->attributes->get(ApproovRequestAttributes::AUTH_CONTEXT);
+        if ($approovAuth instanceof AuthContext) {
+            $principal = $approovAuth->principal();
+            if ($principal === 'approov-disabled') {
+                return 'approov_disabled';
+            }
+            if ($principal !== '') {
+                return 'approov_ok';
+            }
+        }
+
         if (is_array($approovAuth)) {
             $principal = $approovAuth['principal'] ?? null;
             if ($principal === 'approov-disabled') {
@@ -115,19 +122,19 @@ class RequestLogger
             $requestId = (string) Str::uuid();
         }
 
-        $request->attributes->set(self::REQUEST_ID_ATTRIBUTE, $requestId);
+        $request->attributes->set(ApproovRequestAttributes::REQUEST_ID, $requestId);
 
         return $requestId;
     }
 
     private function requestId(Request $request): ?string
     {
-        $value = $request->attributes->get(self::REQUEST_ID_ATTRIBUTE);
+        $value = $request->attributes->get(ApproovRequestAttributes::REQUEST_ID);
         if (is_string($value) && $value !== '') {
             return $value;
         }
 
-        return $this->trimOrNull($request->header(self::REQUEST_ID_HEADER));
+        return $this->trimOrNull($request->header(ApproovRequestAttributes::REQUEST_ID_HEADER));
     }
 
     private function trimOrNull(?string $value): ?string

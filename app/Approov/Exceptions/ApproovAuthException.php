@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Approov;
+namespace App\Approov\Exceptions;
 
 use RuntimeException;
 
-class ApproovAuthException extends RuntimeException
+final class ApproovAuthException extends RuntimeException
 {
     public function __construct(
         private readonly ApproovErrorCode $errorCode,

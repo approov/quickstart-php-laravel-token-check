@@ -20,6 +20,6 @@ class Kernel extends HttpKernel
 
     protected $middlewareAliases = [
         'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        'approov' => \App\Http\Middleware\ApproovTokenVerifier::class,
+        'approov' => \App\Approov\Http\Middleware\ApproovTokenVerifier::class,
     ];
 }
