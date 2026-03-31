@@ -1,0 +1,32 @@
+# Keep Docker build context lean and avoid leaking local-only files.
+.git
+.gitignore
+.gitattributes
+.idea/
+.vscode/
+.config/
+.DS_Store
+
+# Do not bake local environment files into the image.
+.env
+.env.*
+!.env.example
+
+# Reinstall dependencies in the image.
+node_modules/
+vendor/
+
+# Runtime/generated Laravel files.
+public/hot
+public/storage
+storage/*.key
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/testing/
+storage/framework/views/
+
+# Local caches/logs
+.phpunit.result.cache
+npm-debug.log
+yarn-error.log

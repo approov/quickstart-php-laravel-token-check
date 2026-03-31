@@ -1,54 +1,22 @@
-ARG TAG=8.1.4-cli
+FROM php:8.5.2-cli
 
-FROM php:${TAG}
+COPY --from=composer:2.9 /usr/bin/composer /usr/bin/composer
 
-ARG CONTAINER_USER="developer"
-ARG LANGUAGE_CODE="en"
-ARG COUNTRY_CODE="GB"
-ARG ENCODING="UTF-8"
+WORKDIR /app
 
-ARG LOCALE_STRING="${LANGUAGE_CODE}_${COUNTRY_CODE}"
-ARG LOCALIZATION="${LOCALE_STRING}.${ENCODING}"
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git unzip libzip-dev \
+    && docker-php-ext-install zip \
+    && rm -rf /var/lib/apt/lists/*
 
-ARG OH_MY_ZSH_THEME="bira"
+COPY . .
 
-RUN apt update && apt -y upgrade && \
-    apt -y install \
-        locales \
-        git \
-        curl \
-        inotify-tools \
-        zip \
-        unzip \
-        zsh && \
+RUN mkdir -p bootstrap/cache \
+    storage/framework/cache \
+    storage/framework/sessions \
+    storage/framework/testing \
+    storage/framework/views \
+    storage/logs \
+    && composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
 
-        echo "${LOCALIZATION} ${ENCODING}" > /etc/locale.gen && \
-        locale-gen "${LOCALIZATION}" && \
-
-        useradd -m -u 1000 -s /usr/bin/zsh "${CONTAINER_USER}" && \
-
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/robbyrussell/oh-my-zsh/master/tools/install.sh)" && \
-
-        cp -v /root/.zshrc /home/"${CONTAINER_USER}"/.zshrc && \
-        cp -rv /root/.oh-my-zsh /home/"${CONTAINER_USER}"/.oh-my-zsh && \
-        sed -i "s/\/root/\/home\/${CONTAINER_USER}/g" /home/"${CONTAINER_USER}"/.zshrc && \
-        sed -i s/ZSH_THEME=\"robbyrussell\"/ZSH_THEME=\"${OH_MY_ZSH_THEME}\"/g /home/${CONTAINER_USER}/.zshrc && \
-        mkdir /home/"${CONTAINER_USER}"/workspace && \
-        chown -R "${CONTAINER_USER}":"${CONTAINER_USER}" /home/"${CONTAINER_USER}"
-
-USER ${CONTAINER_USER}
-
-ENV USER ${CONTAINER_USER}
-ENV LANG "${LOCALIZATION}"
-ENV LANGUAGE "${LOCALE_STRING}:${LANGUAGE_CODE}"
-ENV PATH=/home/${CONTAINER_USER}/.local/bin:${PATH}
-ENV LC_ALL "${LOCALIZATION}"
-
-WORKDIR /home/${CONTAINER_USER}/workspace
-
-RUN mkdir -p /home/${CONTAINER_USER}/.local/bin && \
-    curl https://raw.githubusercontent.com/composer/getcomposer.org/76a7060ccb93902cd7576b67264ad91c8a2700e2/web/installer | php -- --quiet && \
-    mv composer.phar /home/${CONTAINER_USER}/.local/bin/composer && \
-    composer about
-
-CMD ["zsh"]
+CMD ["bash", "scripts/build.sh"]
