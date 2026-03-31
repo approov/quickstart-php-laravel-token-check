@@ -1,11 +1,15 @@
 # Approov Backend Quickstart - PHP Laravel
 
+[Approov](https://approov.io) is an API security solution used to verify that requests received by your backend services originate from trusted versions of your mobile apps. You can learn more about Approov, the motives for adopting it, and more detail on how it works by following this [link](https://approov.io/mobile-app-security/rasp/).
+
 This project provides a server-side example of Approov token verification for a protected backend API. It exposes a simple API that verifies Approov tokens before granting access to protected endpoints and demonstrates how the endpoints behave under the current Approov configuration:
 
  - `/unprotected` - no Approov token required.
  - `/token-check` - requires a valid Approov token.
  - `/token-binding` - requires a valid Approov token which is bound to a header value.
  - `/token-double-binding` - requires a valid Approov token which is bound to two header values.
+
+
 
 In this example, Approov token check is implemented in `ApproovTokenVerifier.php`. The responsibilities break down as follows:
 
