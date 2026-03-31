@@ -12,6 +12,11 @@ final class ApproovRequestAttributes
     public const REQUIRED_HEADERS = 'approov_required_headers';
     public const FAILURE = 'approov_failure';
 
+    /**
+     * Prevents instantiation of this constants-only utility class.
+     *
+     * @return void
+     */
     private function __construct()
     {
     }

@@ -21,10 +21,24 @@ class Handler extends ExceptionHandler
         'password_confirmation',
     ];
 
+    /**
+     * Registers exception rendering callbacks for the application.
+     *
+     * @return void
+     */
     public function register(): void
     {
-        $this->renderable(function (ApproovAuthException $e, Request $request) {
-            return app(ApproovExceptionResponder::class)->toResponse($e, $request);
-        });
+        $this->renderable(
+            /**
+             * Converts Approov authentication failures into JSON API responses.
+             *
+             * @param  ApproovAuthException  $e  The Approov exception raised during request verification.
+             * @param  Request  $request  The request that triggered the authentication failure.
+             * @return \Illuminate\Http\JsonResponse
+             */
+            function (ApproovAuthException $e, Request $request) {
+                return app(ApproovExceptionResponder::class)->toResponse($e, $request);
+            }
+        );
     }
 }

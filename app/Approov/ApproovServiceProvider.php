@@ -13,6 +13,11 @@ use Illuminate\Support\ServiceProvider;
 
 final class ApproovServiceProvider extends ServiceProvider
 {
+    /**
+     * Merges package configuration and registers the Approov service singletons.
+     *
+     * @return void
+     */
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/Resources/config/approov.php', 'approov');

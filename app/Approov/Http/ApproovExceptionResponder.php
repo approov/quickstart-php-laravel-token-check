@@ -11,6 +11,15 @@ use Illuminate\Http\Request;
 
 final class ApproovExceptionResponder
 {
+    /**
+     * Builds the JSON error response for an Approov authentication failure.
+     *
+     * When a request identifier is available, it is included in both the payload and response headers.
+     *
+     * @param  ApproovAuthException  $e  The Approov authentication exception to translate into a response.
+     * @param  Request  $request  The request associated with the authentication failure.
+     * @return JsonResponse
+     */
     public function toResponse(ApproovAuthException $e, Request $request): JsonResponse
     {
         $status = $e->httpStatus();
@@ -34,6 +43,12 @@ final class ApproovExceptionResponder
         return $response;
     }
 
+    /**
+     * Resolves the request identifier from request attributes or the inbound request header.
+     *
+     * @param  Request  $request  The request to inspect for a request identifier.
+     * @return string|null
+     */
     private function requestId(Request $request): ?string
     {
         $fromAttributes = $request->attributes->get(ApproovRequestAttributes::REQUEST_ID);

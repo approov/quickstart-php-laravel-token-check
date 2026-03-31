@@ -14,11 +14,30 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class ApproovTokenVerifier
 {
+    /**
+     * Creates the middleware with the Approov application service dependency.
+     *
+     * @param  ApproovService  $approovService  The service that performs request verification and state lookups.
+     * @return void
+     */
     public function __construct(
         private readonly ApproovService $approovService
     ) {
     }
 
+    /**
+     * Verifies the incoming request's Approov token and stores verification state on the request.
+     *
+     * This middleware records the required headers, stores the authentication context on success,
+     * and stores failure context on the request before rethrowing authentication failures.
+     *
+     * @param  Request  $request  The incoming request being verified.
+     * @param  Closure(Request): Response  $next  The next middleware or controller action in the pipeline.
+     * @param  string  ...$boundHeaders  Header names that must participate in token binding verification.
+     * @return Response
+     *
+     * @throws ApproovAuthException
+     */
     public function handle(Request $request, Closure $next, ...$boundHeaders): Response
     {
         $normalizedBindingHeaders = $this->normalizeBindingHeaders($boundHeaders);
@@ -47,6 +66,13 @@ final class ApproovTokenVerifier
         }
     }
 
+    /**
+     * Collects normalized request header values for the headers required by token binding.
+     *
+     * @param  Request  $request  The request that carries the header values.
+     * @param  list<string>  $headers  The normalized header names to read from the request.
+     * @return array<string, string|null>
+     */
     private function headerValues(Request $request, array $headers): array
     {
         $values = [];
@@ -57,6 +83,12 @@ final class ApproovTokenVerifier
         return $values;
     }
 
+    /**
+     * Removes blank and non-string entries from the configured binding header list.
+     *
+     * @param  array<int, mixed>  $headers  The raw binding header values supplied to the middleware.
+     * @return list<string>
+     */
     private function normalizeBindingHeaders(array $headers): array
     {
         $normalized = [];
@@ -76,6 +108,12 @@ final class ApproovTokenVerifier
         return $normalized;
     }
 
+    /**
+     * Resolves the current request identifier from request attributes or the inbound header.
+     *
+     * @param  Request  $request  The request to inspect for a request identifier.
+     * @return string|null
+     */
     private function requestId(Request $request): ?string
     {
         $value = $request->attributes->get(ApproovRequestAttributes::REQUEST_ID);
@@ -86,6 +124,12 @@ final class ApproovTokenVerifier
         return $this->trimOrNull($request->header(ApproovRequestAttributes::REQUEST_ID_HEADER));
     }
 
+    /**
+     * Trims a mixed input and returns null when it is not a non-empty string.
+     *
+     * @param  mixed  $value  The value to normalize.
+     * @return string|null
+     */
     private function trimOrNull(mixed $value): ?string
     {
         if (!is_string($value)) {

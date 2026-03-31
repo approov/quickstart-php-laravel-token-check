@@ -14,6 +14,16 @@ final class LocalRequestVerifier implements RequestVerifier
     private const UNAUTHORIZED_MESSAGE = 'Approov authentication failed.';
     private const INTERNAL_MESSAGE = 'Approov verification failed.';
 
+    /**
+     * Verifies the Approov token and any configured binding headers for an incoming request.
+     *
+     * @param  VerificationInput  $input  The normalized request data to verify.
+     * @param  ApproovConfig  $config  The configuration used to resolve the token header and shared secret.
+     * @param  ApproovState  $state  The current Approov and token-binding state.
+     * @return AuthContext
+     *
+     * @throws ApproovAuthException
+     */
     public function verify(VerificationInput $input, ApproovConfig $config, ApproovState $state): AuthContext
     {
         $rawToken = $this->trimOrNull($input->approovToken());
@@ -47,6 +57,18 @@ final class LocalRequestVerifier implements RequestVerifier
         }
     }
 
+    /**
+     * Throws an unauthorized Approov authentication exception for a client-side verification failure.
+     *
+     * @param  VerificationInput  $input  The request data being verified.
+     * @param  ApproovState  $state  The current Approov and token-binding state.
+     * @param  string  $approovHeader  The configured header name used to carry the Approov token.
+     * @param  ApproovErrorCode  $errorCode  The specific unauthorized failure code.
+     * @param  array<string, mixed>  $context  Additional failure context to merge into the exception payload.
+     * @return never
+     *
+     * @throws ApproovAuthException
+     */
     private function failUnauthorized(
         VerificationInput $input,
         ApproovState $state,
@@ -57,6 +79,18 @@ final class LocalRequestVerifier implements RequestVerifier
         $this->fail($input, $state, $approovHeader, $errorCode, 401, self::UNAUTHORIZED_MESSAGE, $context);
     }
 
+    /**
+     * Throws an internal-server Approov authentication exception for a server-side verification failure.
+     *
+     * @param  VerificationInput  $input  The request data being verified.
+     * @param  ApproovState  $state  The current Approov and token-binding state.
+     * @param  string  $approovHeader  The configured header name used to carry the Approov token.
+     * @param  ApproovErrorCode  $errorCode  The specific internal failure code.
+     * @param  array<string, mixed>  $context  Additional failure context to merge into the exception payload.
+     * @return never
+     *
+     * @throws ApproovAuthException
+     */
     private function failServer(
         VerificationInput $input,
         ApproovState $state,
@@ -67,6 +101,20 @@ final class LocalRequestVerifier implements RequestVerifier
         $this->fail($input, $state, $approovHeader, $errorCode, 500, self::INTERNAL_MESSAGE, $context);
     }
 
+    /**
+     * Throws an Approov authentication exception with the supplied status, message, and merged context.
+     *
+     * @param  VerificationInput  $input  The request data being verified.
+     * @param  ApproovState  $state  The current Approov and token-binding state.
+     * @param  string  $approovHeader  The configured header name used to carry the Approov token.
+     * @param  ApproovErrorCode  $errorCode  The specific failure code to attach to the exception.
+     * @param  int  $httpStatus  The HTTP status to expose for this failure.
+     * @param  string  $safeMessage  The sanitized client-facing error message.
+     * @param  array<string, mixed>  $context  Additional failure context to merge into the exception payload.
+     * @return never
+     *
+     * @throws ApproovAuthException
+     */
     private function fail(
         VerificationInput $input,
         ApproovState $state,
@@ -81,6 +129,17 @@ final class LocalRequestVerifier implements RequestVerifier
         throw new ApproovAuthException($errorCode, $httpStatus, $safeMessage, $context);
     }
 
+    /**
+     * Normalizes unexpected verifier exceptions into the appropriate Approov authentication failure.
+     *
+     * @param  VerificationInput  $input  The request data being verified.
+     * @param  ApproovState  $state  The current Approov and token-binding state.
+     * @param  string  $approovHeader  The configured header name used to carry the Approov token.
+     * @param  \Throwable  $e  The exception raised during verification.
+     * @return never
+     *
+     * @throws ApproovAuthException
+     */
     private function handleVerificationException(
         VerificationInput $input,
         ApproovState $state,
@@ -121,6 +180,12 @@ final class LocalRequestVerifier implements RequestVerifier
         $this->failServer($input, $state, $approovHeader, ApproovErrorCode::InternalVerificationError, $context);
     }
 
+    /**
+     * Maps JWT parsing and validation errors to an Approov error code.
+     *
+     * @param  \UnexpectedValueException  $e  The parsing or validation exception to classify.
+     * @return ApproovErrorCode
+     */
     private function unexpectedValueErrorCode(\UnexpectedValueException $e): ApproovErrorCode
     {
         return match ($e->getMessage()) {
@@ -135,6 +200,12 @@ final class LocalRequestVerifier implements RequestVerifier
         };
     }
 
+    /**
+     * Maps runtime configuration failures to an Approov error code.
+     *
+     * @param  \RuntimeException  $e  The runtime exception to classify.
+     * @return ApproovErrorCode
+     */
     private function runtimeErrorCode(\RuntimeException $e): ApproovErrorCode
     {
         return match ($e->getMessage()) {
@@ -144,6 +215,12 @@ final class LocalRequestVerifier implements RequestVerifier
         };
     }
 
+    /**
+     * Infers an Approov error code from a type or value error raised during verification.
+     *
+     * @param  \Throwable  $e  The type or value error to classify.
+     * @return ApproovErrorCode
+     */
     private function typeOrValueErrorCode(\Throwable $e): ApproovErrorCode
     {
         if ($this->isAlgorithmTypeError($e)) {
@@ -157,6 +234,12 @@ final class LocalRequestVerifier implements RequestVerifier
         return ApproovErrorCode::InternalVerificationError;
     }
 
+    /**
+     * Determines whether a throwable originated from invalid JWT algorithm handling.
+     *
+     * @param  \Throwable  $e  The throwable to inspect.
+     * @return bool
+     */
     private function isAlgorithmTypeError(\Throwable $e): bool
     {
         if ($e instanceof \TypeError && str_contains($e->getMessage(), 'mapJwtAlgorithm')) {
@@ -180,6 +263,12 @@ final class LocalRequestVerifier implements RequestVerifier
         return false;
     }
 
+    /**
+     * Determines whether a throwable originated from invalid JWT claim decoding or validation.
+     *
+     * @param  \Throwable  $e  The throwable to inspect.
+     * @return bool
+     */
     private function isClaimTypeError(\Throwable $e): bool
     {
         foreach ($e->getTrace() as $frame) {
@@ -200,6 +289,12 @@ final class LocalRequestVerifier implements RequestVerifier
         return false;
     }
 
+    /**
+     * Determines whether an error code should be reported to the client as unauthorized.
+     *
+     * @param  ApproovErrorCode  $errorCode  The error code to classify.
+     * @return bool
+     */
     private function isUnauthorizedError(ApproovErrorCode $errorCode): bool
     {
         return match ($errorCode) {
@@ -215,6 +310,15 @@ final class LocalRequestVerifier implements RequestVerifier
         };
     }
 
+    /**
+     * Builds the base failure context attached to Approov authentication exceptions.
+     *
+     * @param  VerificationInput  $input  The request data being verified.
+     * @param  ApproovState  $state  The current Approov and token-binding state.
+     * @param  string  $approovHeader  The configured header name used to carry the Approov token.
+     * @param  ApproovErrorCode  $errorCode  The failure code being reported.
+     * @return array<string, mixed>
+     */
     private function baseLogContext(
         VerificationInput $input,
         ApproovState $state,
@@ -240,6 +344,14 @@ final class LocalRequestVerifier implements RequestVerifier
         return $context;
     }
 
+    /**
+     * Returns booleans indicating which Approov-related headers were present on the request.
+     *
+     * @param  VerificationInput  $input  The request data being verified.
+     * @param  ApproovState  $state  The current Approov and token-binding state.
+     * @param  string  $approovHeader  The configured header name associated with the verification attempt.
+     * @return array<string, bool|array<string, bool>>
+     */
     private function approovHeaderFlags(VerificationInput $input, ApproovState $state, string $approovHeader): array
     {
         $flags = [
@@ -257,6 +369,15 @@ final class LocalRequestVerifier implements RequestVerifier
         return $flags;
     }
 
+    /**
+     * Verifies the JWT structure, signature, and expiration of an Approov token.
+     *
+     * @param  string  $token  The raw JWT token supplied by the client.
+     * @param  string  $secret  The decoded shared secret used to verify the token signature.
+     * @return array<string, mixed>
+     *
+     * @throws \UnexpectedValueException
+     */
     private function verifyApproovToken(string $token, string $secret): array
     {
         $parts = explode('.', $token);
@@ -285,6 +406,12 @@ final class LocalRequestVerifier implements RequestVerifier
         return $payload;
     }
 
+    /**
+     * Concatenates the configured bound header values or returns null when any required header is blank.
+     *
+     * @param  VerificationInput  $input  The request data carrying the bound header values.
+     * @return string|null
+     */
     private function extractBindingValue(VerificationInput $input): ?string
     {
         $values = [];
@@ -300,6 +427,12 @@ final class LocalRequestVerifier implements RequestVerifier
         return implode('', $values);
     }
 
+    /**
+     * Returns the non-empty pay claim from a verified token payload.
+     *
+     * @param  array<string, mixed>  $claims  The verified JWT payload claims.
+     * @return string|null
+     */
     private function payClaim(array $claims): ?string
     {
         $expected = $claims['pay'] ?? null;
@@ -312,11 +445,25 @@ final class LocalRequestVerifier implements RequestVerifier
         return $trimmed === '' ? null : $trimmed;
     }
 
+    /**
+     * Returns the base64-encoded SHA-256 hash of a token-binding value.
+     *
+     * @param  string  $value  The concatenated binding value to hash.
+     * @return string
+     */
     private function hashBase64(string $value): string
     {
         return base64_encode(hash('sha256', $value, true));
     }
 
+    /**
+     * Ensures the verified token payload contains a future expiration timestamp.
+     *
+     * @param  array<string, mixed>  $claims  The verified JWT payload claims.
+     * @return void
+     *
+     * @throws \UnexpectedValueException
+     */
     private function validateExpiration(array $claims): void
     {
         if (!array_key_exists('exp', $claims)) {
@@ -329,6 +476,14 @@ final class LocalRequestVerifier implements RequestVerifier
         }
     }
 
+    /**
+     * Decodes and JSON-parses a JWT header or payload segment.
+     *
+     * @param  string  $value  The base64url-encoded JWT segment to decode.
+     * @return array<string, mixed>
+     *
+     * @throws \UnexpectedValueException
+     */
     private function decodeJwtPart(string $value): array
     {
         $decoded = $this->base64UrlDecode($value);
@@ -340,6 +495,14 @@ final class LocalRequestVerifier implements RequestVerifier
         return $json;
     }
 
+    /**
+     * Decodes a base64url-encoded JWT segment.
+     *
+     * @param  string  $value  The base64url-encoded value to decode.
+     * @return string
+     *
+     * @throws \UnexpectedValueException
+     */
     private function base64UrlDecode(string $value): string
     {
         $normalized = strtr($value, '-_', '+/');
@@ -356,6 +519,14 @@ final class LocalRequestVerifier implements RequestVerifier
         return $decoded;
     }
 
+    /**
+     * Maps a JWT algorithm name to the hashing algorithm used for signature verification.
+     *
+     * @param  string|null  $algorithm  The JWT alg header value to map.
+     * @return string
+     *
+     * @throws \UnexpectedValueException
+     */
     private function mapJwtAlgorithm(?string $algorithm): string
     {
         return match ($algorithm) {
@@ -364,11 +535,23 @@ final class LocalRequestVerifier implements RequestVerifier
         };
     }
 
+    /**
+     * Trims a nullable string while preserving empty-string results for blank input.
+     *
+     * @param  string|null  $value  The value to normalize.
+     * @return string|null
+     */
     private function trimOrNull(?string $value): ?string
     {
         return $value === null ? null : trim($value);
     }
 
+    /**
+     * Determines whether a nullable string contains any non-whitespace characters.
+     *
+     * @param  string|null  $value  The value to inspect.
+     * @return bool
+     */
     private function hasText(?string $value): bool
     {
         return $value !== null && trim($value) !== '';
